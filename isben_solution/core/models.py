@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 
 # =============================================================================
@@ -73,38 +74,34 @@ ROL_USUARIO = [
 # CAPA: USUARIOS
 # =============================================================================
 
-class Usuario(models.Model):
-    nombre      = models.CharField(max_length=100)
-    apellido    = models.CharField(max_length=100)
-    email       = models.EmailField(unique=True)
-    password    = models.CharField(max_length=255)
-    telefono    = models.CharField(max_length=20, blank=True)
-    rol         = models.CharField(max_length=20, choices=ROL_USUARIO)
-    activo      = models.BooleanField(default=True)
-    fecha_creacion      = models.DateTimeField(auto_now_add=True)
+class Usuario(AbstractUser):
+    email    = models.EmailField(unique=True)
+    telefono = models.CharField(max_length=20, blank=True)
+    rol      = models.CharField(max_length=20, choices=ROL_USUARIO)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    REQUIRED_FIELDS = ['email', 'rol']
+
+    class Meta:
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+
     def __str__(self):
-        return "%s %s - %s (%s)" % (self.nombre, self.apellido, self.email, self.rol)
+        return "%s - %s (%s)" % (self.get_full_name(), self.email, self.rol)
 
     def get_nombre_completo(self):
-        """Retorna el nombre completo del usuario."""
-        return "%s %s" % (self.nombre, self.apellido)
+        return self.get_full_name()
 
     def es_empresa(self):
-        """Verifica si el usuario tiene rol de empresa."""
         return self.rol == 'empresa'
 
     def es_vendedor(self):
-        """Verifica si el usuario tiene rol de vendedor."""
         return self.rol == 'vendedor'
 
     def es_comprador(self):
-        """Verifica si el usuario tiene rol de comprador."""
         return self.rol == 'comprador'
 
     def es_administrador(self):
-        """Verifica si el usuario tiene rol de administrador."""
         return self.rol == 'administrador'
 
 
@@ -119,6 +116,10 @@ class Empresa(models.Model):
     estado              = models.CharField(max_length=20, choices=ESTADO_APROBACION,
                                            default='pendiente')
     fecha_verificacion  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Empresa'
+        verbose_name_plural = 'Empresas'
 
     def __str__(self):
         return "%s - RUC: %s" % (self.razon_social, self.ruc)
@@ -153,6 +154,10 @@ class Vendedor(models.Model):
                                              default='pendiente')
     empresas_aprobadoras  = models.ManyToManyField(Empresa, blank=True,
                                                    related_name='vendedores_aprobados')
+
+    class Meta:
+        verbose_name = 'Vendedor'
+        verbose_name_plural = 'Vendedores'
 
     def __str__(self):
         return "%s - Identidad: %s (%s)" % (
@@ -189,6 +194,10 @@ class Comprador(models.Model):
     limite_credito    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     calificacion_promedio = models.FloatField(default=0.0)
 
+    class Meta:
+        verbose_name = 'Comprador'
+        verbose_name_plural = 'Compradores'
+
     def __str__(self):
         return "%s - %s" % (self.usuario.get_nombre_completo(), self.tipo_negocio)
 
@@ -202,6 +211,10 @@ class Administrador(models.Model):
                                         related_name='administrador')
     nivel_acceso = models.IntegerField(default=1)
     area_trabajo = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name = 'Administrador'
+        verbose_name_plural = 'Administradores'
 
     def __str__(self):
         return "%s - Nivel %s - %s" % (
@@ -223,6 +236,10 @@ class CategoriaProducto(models.Model):
     nombre      = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
     activo      = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Categoría de producto'
+        verbose_name_plural = 'Categorías de producto'
 
     def __str__(self):
         return "%s (%s)" % (self.nombre, "activa" if self.activo else "inactiva")
@@ -246,6 +263,10 @@ class Producto(models.Model):
     fecha_creacion      = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
+
     def __str__(self):
         return "%s - $%s (%s)" % (self.nombre, self.precio_venta, self.empresa.razon_social)
 
@@ -262,7 +283,6 @@ class Producto(models.Model):
         except Inventario.DoesNotExist:
             return False
 
-
 # =============================================================================
 # CAPA: INVENTARIO
 # =============================================================================
@@ -275,6 +295,10 @@ class Inventario(models.Model):
     stock_maximo = models.IntegerField(default=0)
     ubicacion    = models.CharField(max_length=200, blank=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Inventario'
+        verbose_name_plural = 'Inventarios'
 
     def __str__(self):
         return "Inventario: %s | Stock: %s unidades" % (self.producto.nombre, self.stock_actual)
@@ -313,6 +337,10 @@ class Suscripcion(models.Model):
     fecha_fin           = models.DateField(null=True, blank=True)
     fecha_creacion      = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Suscripción'
+        verbose_name_plural = 'Suscripciones'
+
     def __str__(self):
         return "%s - Plan %s (%s)" % (self.empresa.razon_social, self.tipo_plan, self.estado)
 
@@ -341,6 +369,10 @@ class Comision(models.Model):
                                         default='pendiente')
     fecha_generacion = models.DateTimeField(auto_now_add=True)
     fecha_pago       = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Comisión'
+        verbose_name_plural = 'Comisiones'
 
     def __str__(self):
         return "Comision %s%% - $%s - %s (%s)" % (
@@ -372,6 +404,10 @@ class Pedido(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_despacho = models.DateTimeField(null=True, blank=True)
     fecha_entrega  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
 
     def __str__(self):
         return "Pedido %s - %s - $%s (%s)" % (
@@ -412,6 +448,10 @@ class DetallePedido(models.Model):
     subtotal        = models.DecimalField(max_digits=14, decimal_places=2)
     descuento       = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
+    class Meta:
+        verbose_name = 'Detalle de pedido'
+        verbose_name_plural = 'Detalles de pedido'
+
     def __str__(self):
         return "%s x%s - $%s (Pedido: %s)" % (
             self.producto.nombre,
@@ -439,6 +479,10 @@ class Pago(models.Model):
     fecha_pago      = models.DateTimeField(auto_now_add=True)
     fecha_validacion = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+
     def __str__(self):
         return "Pago %s - $%s - %s (%s)" % (
             self.tipo, self.monto, self.metodo_pago, self.estado
@@ -463,6 +507,10 @@ class Factura(models.Model):
     total          = models.DecimalField(max_digits=14, decimal_places=2)
     estado_sri     = models.CharField(max_length=50, blank=True)
     clave_acceso   = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = 'Factura'
+        verbose_name_plural = 'Facturas'
 
     def __str__(self):
         return "Factura %s - $%s - SRI: %s" % (
@@ -500,6 +548,10 @@ class Curso(models.Model):
     vendedores     = models.ManyToManyField(Vendedor, blank=True,
                                             related_name='cursos_asignados')
 
+    class Meta:
+        verbose_name = 'Curso'
+        verbose_name_plural = 'Cursos'
+
     def __str__(self):
         return "%s - %sh (%s)" % (
             self.titulo,
@@ -521,6 +573,10 @@ class Evaluacion(models.Model):
     puntaje_minimo   = models.FloatField()
     aprobado         = models.BooleanField(default=False)
     fecha_rendicion  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Evaluación'
+        verbose_name_plural = 'Evaluaciones'
 
     def __str__(self):
         estado = "Aprobado" if self.aprobado else "Reprobado"
@@ -559,6 +615,10 @@ class Calificacion(models.Model):
     es_incidencia       = models.BooleanField(default=False)
     fecha_calificacion  = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Calificación'
+        verbose_name_plural = 'Calificaciones'
+
     def __str__(self):
         objetivo = self.vendedor_calificado or self.empresa_calificada
         return "Calificacion %s/5 a %s (%s)" % (
@@ -591,6 +651,8 @@ class Notificacion(models.Model):
 
     class Meta:
         ordering = ['-fecha_envio']
+        verbose_name = 'Notificación'
+        verbose_name_plural = 'Notificaciones'
 
     def __str__(self):
         estado = "leida" if self.leida else "no leida"

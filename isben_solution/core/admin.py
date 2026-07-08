@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
 from .models import (
     Usuario, Empresa, Vendedor, Comprador, Administrador,
     CategoriaProducto, Producto, Inventario,
@@ -7,7 +8,18 @@ from .models import (
     Curso, Evaluacion, Calificacion, Notificacion
 )
 
-admin.site.register(Usuario)
+
+class UsuarioAdmin(UserAdmin):
+    list_display = ['username', 'email', 'rol', 'is_active', 'is_staff']
+    fieldsets = UserAdmin.fieldsets + (
+        ('Datos ISBEN Solution', {'fields': ('rol', 'telefono')}),
+    )
+    add_fieldsets = UserAdmin.add_fieldsets + (
+        ('Datos ISBEN Solution', {'fields': ('rol', 'telefono', 'email')}),
+    )
+
+
+admin.site.register(Usuario, UsuarioAdmin)
 admin.site.register(Empresa)
 admin.site.register(Vendedor)
 admin.site.register(Comprador)
