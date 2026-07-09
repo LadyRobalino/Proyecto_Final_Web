@@ -117,3 +117,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 AUTH_USER_MODEL = 'core.Usuario'
+# Al final del archivo agrega esto:
+AUTH_USER_MODEL = 'core.Usuario'
+
+LANGUAGE_CODE = 'es-ec'
+TIME_ZONE = 'America/Guayaquil'

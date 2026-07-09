@@ -4,35 +4,46 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>
-        {% block title %}ISBEN Solution{% endblock %}
-    </title>
+    <title>{% block title %}ISBEN Solution{% endblock %}</title>
 
-    <!-- Bootstrap 5 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-
-    <!-- CSS propio del proyecto -->
     <link rel="stylesheet" href="{% static 'core/css/estilos.css' %}">
 </head>
-<body>
+<body class="bg-light">
 
-    <header>
-        <h1 class="p-3">ISBEN Solution</h1>
-        <hr>
+    <header class="bg-dark text-white mb-4">
+        <div class="container d-flex justify-content-between align-items-center py-3">
+            <h1 class="h3 mb-0">ISBEN Solution</h1>
+            <nav>
+                {% if user.is_authenticated %}
+                    <span class="me-3 text-white-50">Hola, {{ user.username }} ({{ user.rol|capfirst }})</span>
+                    <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-danger">Cerrar Sesión</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-sm btn-outline-light">Iniciar Sesión</a>
+                {% endif %}
+            </nav>
+        </div>
     </header>
 
     <main class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
         {% block content %}
         {% endblock %}
     </main>
 
-    <hr>
-    <footer class="text-center p-3">
-        <p>Loja - Ecuador</p>
-        <p>{% now "jS F Y H:i" %}</p>
+    <footer class="text-center p-4 mt-5 bg-white border-top text-muted">
+        <p class="mb-1">Loja - Ecuador</p>
+        <p class="small">{% now "j F Y H:i" %}</p>
     </footer>
 
-    <!-- Bootstrap JS (para componentes interactivos: modales, dropdowns, etc.) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bundle.min.js"></script>
 </body>
 </html>
