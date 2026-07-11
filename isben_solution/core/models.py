@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
@@ -526,7 +528,7 @@ class Factura(models.Model):
         Calcula el IVA sobre el subtotal.
         En Ecuador la tarifa vigente es 15% (puede ajustarse).
         """
-        self.iva = round(self.subtotal * 0.15, 2)
+        self.iva = round(self.subtotal * Decimal('0.15'), 2)
         self.total = round(self.subtotal + self.iva, 2)
         self.save()
         return self.iva

@@ -1,0 +1,21 @@
+{% extends 'core/master.html' %}
+{% load form_tags %}
+{% block title %}Nuevo curso{% endblock %}
+{% block header_title %}Nuevo curso{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+  <a href="{% url 'lista_cursos' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver</a>
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+    <h2 class="mb-6 text-xl font-bold text-slate-800"><i class="bi bi-mortarboard text-brand-500"></i> Crear curso</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% include 'core/partials/_form_campos.html' %}
+      <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
+        <a href="{% url 'lista_cursos' %}" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50">Cancelar</a>
+        <button type="submit" class="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-brand-700 hover:to-brand-600"><i class="bi bi-check-lg"></i> Crear curso</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

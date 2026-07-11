@@ -1,0 +1,43 @@
+{% extends 'core/master.html' %}
+{% block title %}{{ vendedor.usuario.get_full_name }}{% endblock %}
+{% block header_title %}{{ vendedor.usuario.get_full_name }}{% endblock %}
+{% block header_subtitle %}Perfil del vendedor independiente.{% endblock %}
+
+{% block content %}
+<a href="{% url 'lista_vendedores' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver a vendedores</a>
+
+<div class="mx-auto max-w-2xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+  <div class="mb-6 flex items-center gap-4">
+    <div class="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-2xl font-bold text-white shadow-soft">
+      {{ vendedor.usuario.first_name|slice:":1"|upper }}
+    </div>
+    <div>
+      <h2 class="text-lg font-bold text-slate-800">{{ vendedor.usuario.get_full_name }}</h2>
+      {% include 'core/partials/_badge_estado.html' with estado=vendedor.estado_aprobacion %}
+    </div>
+  </div>
+  <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+    <div><dt class="text-slate-400">Identidad</dt><dd class="font-medium text-slate-700">{{ vendedor.numero_identidad }}</dd></div>
+    <div><dt class="text-slate-400">Calificación</dt><dd class="font-medium text-slate-700"><i class="bi bi-star-fill text-amber-400"></i> {{ vendedor.calificacion_promedio|floatformat:1 }} · {{ vendedor.get_calificacion_label }}</dd></div>
+    <div><dt class="text-slate-400">Correo</dt><dd class="font-medium text-slate-700">{{ vendedor.usuario.email }}</dd></div>
+    <div><dt class="text-slate-400">Teléfono</dt><dd class="font-medium text-slate-700">{{ vendedor.usuario.telefono|default:"—" }}</dd></div>
+  </dl>
+
+  <div class="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5">
+    {% if user.rol == 'empresa' %}
+    <form method="post" action="{% url 'autorizar_vendedor' vendedor.pk %}">
+      {% csrf_token %}
+      {% if autorizado_por_mi %}
+      <button type="submit" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Revocar autorización</button>
+      {% else %}
+      <button type="submit" class="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"><i class="bi bi-check-circle"></i> Autorizar para mis productos</button>
+      {% endif %}
+    </form>
+    {% endif %}
+    {% if user.rol == 'administrador' %}
+    <a href="{% url 'editar_vendedor' vendedor.pk %}" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100"><i class="bi bi-pencil"></i> Editar</a>
+    <a href="{% url 'eliminar_vendedor' vendedor.pk %}" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-trash3"></i> Eliminar</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

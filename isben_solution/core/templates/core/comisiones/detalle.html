@@ -1,0 +1,26 @@
+{% extends 'core/master.html' %}
+{% block title %}Comisión{% endblock %}
+{% block header_title %}Detalle de comisión{% endblock %}
+
+{% block content %}
+<a href="{% url 'lista_comisiones' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver a comisiones</a>
+
+<div class="mx-auto max-w-xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+  <div class="mb-6 flex items-center justify-between">
+    <h2 class="text-xl font-bold text-slate-800">${{ comision.monto_comision }}</h2>
+    {% include 'core/partials/_badge_estado.html' with estado=comision.estado %}
+  </div>
+  <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+    <div><dt class="text-slate-400">Vendedor</dt><dd class="font-medium text-slate-700">{{ comision.vendedor.usuario.get_full_name }}</dd></div>
+    <div><dt class="text-slate-400">Pedido</dt><dd class="font-medium text-slate-700"><a href="{% url 'detalle_pedido' comision.pedido.pk %}" class="text-brand-600 hover:underline">{{ comision.pedido.numero_pedido }}</a></dd></div>
+    <div><dt class="text-slate-400">Porcentaje</dt><dd class="font-medium text-slate-700">{{ comision.porcentaje }}%</dd></div>
+    <div><dt class="text-slate-400">Generada</dt><dd class="font-medium text-slate-700">{{ comision.fecha_generacion|date:"d/m/Y" }}</dd></div>
+    <div><dt class="text-slate-400">Pagada</dt><dd class="font-medium text-slate-700">{{ comision.fecha_pago|date:"d/m/Y"|default:"Pendiente" }}</dd></div>
+  </dl>
+  {% if user.rol in 'empresa,administrador' and comision.estado == 'pendiente' %}
+  <div class="mt-6 border-t border-slate-100 pt-5">
+    <form method="post" action="{% url 'pagar_comision' comision.pk %}">{% csrf_token %}<button class="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"><i class="bi bi-cash-coin"></i> Marcar como pagada</button></form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

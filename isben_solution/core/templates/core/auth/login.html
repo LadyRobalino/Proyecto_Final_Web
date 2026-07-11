@@ -1,0 +1,71 @@
+{% extends 'core/master.html' %}
+{% load form_tags %}
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block auth_content %}
+<div class="flex min-h-screen">
+  <div class="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-slate-900 p-12 text-indigo-50 lg:flex">
+    <div class="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/5 blur-3xl"></div>
+    <div class="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-brand-400/20 blur-3xl"></div>
+
+    <div class="relative flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-xl"><i class="bi bi-boxes"></i></div>
+      <p class="text-xl font-bold">ISBEN Solution</p>
+    </div>
+
+    <div class="relative space-y-4">
+      <h1 class="text-4xl font-extrabold leading-tight">Distribución mayorista, sin fricción.</h1>
+      <p class="max-w-md text-indigo-200">Conecta empresas distribuidoras, vendedores y compradores en una sola plataforma: inventario en tiempo real, pedidos, pagos y comisiones automatizadas.</p>
+    </div>
+
+    <p class="relative text-xs text-indigo-300">&copy; {% now "Y" %} ISBEN Solution — Loja, Ecuador</p>
+  </div>
+
+  <div class="flex w-full flex-1 items-center justify-center bg-slate-50 px-6 py-12 lg:w-1/2">
+    <div class="w-full max-w-sm">
+      <div class="mb-8 text-center lg:text-left">
+        <h2 class="text-2xl font-bold text-slate-800">Bienvenido de nuevo</h2>
+        <p class="mt-1 text-sm text-slate-400">Ingresa tus credenciales para continuar.</p>
+      </div>
+
+      {% include 'core/partials/_mensajes.html' %}
+
+      <form method="post" class="space-y-4" x-data="{ verPassword: false }">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {{ form.non_field_errors.0 }}
+        </div>
+        {% endif %}
+
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Usuario</label>
+          {{ form.username|campo }}
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Contraseña</label>
+          <div class="relative">
+            <input :type="verPassword ? 'text' : 'password'" name="password" id="id_password" required
+                   class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-11 text-sm shadow-sm focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none">
+            <button type="button" @click="verPassword = !verPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <i class="bi" :class="verPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:from-brand-700 hover:to-brand-600">
+          Iniciar sesión <i class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+
+      <p class="mt-6 text-center text-sm text-slate-500">
+        ¿Aún no tienes cuenta?
+        <a href="{% url 'registro' %}" class="font-semibold text-brand-600 hover:text-brand-700">Regístrate aquí</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

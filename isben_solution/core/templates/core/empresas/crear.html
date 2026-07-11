@@ -1,39 +1,27 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Formulario de Empresa</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5" style="max-width: 700px;">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Formulario de Registro de Empresa</h4>
-            </div>
-            <div class="card-body p-4">
-                <form method="POST" novalidate>
-                    {% csrf_token %}
-                    
-                    {% for campo in formulario %}
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ campo.label }}</label>
-                            {{ campo }}
-                            {% if campo.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ campo.errors|striptags }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
+{% extends 'core/master.html' %}
+{% load form_tags %}
+{% block title %}Nueva empresa{% endblock %}
+{% block header_title %}Nueva empresa{% endblock %}
+{% block header_subtitle %}Registra una nueva empresa distribuidora en la plataforma.{% endblock %}
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <a href="{% url 'lista_empresas' %}" class="btn btn-secondary me-md-2">Cancelar</a>
-                        <button type="submit" class="btn btn-success">Guardar Registro</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <a href="{% url 'lista_empresas' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver a empresas</a>
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+    <div class="mb-6 flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-2xl bg-brand-50 text-xl text-brand-600"><i class="bi bi-building"></i></div>
+      <h2 class="text-xl font-bold text-slate-800">Registrar empresa distribuidora</h2>
     </div>
-</body>
-</html>
+    <form method="post">
+      {% csrf_token %}
+      {% include 'core/partials/_form_campos.html' %}
+      <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
+        <a href="{% url 'lista_empresas' %}" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50">Cancelar</a>
+        <button type="submit" class="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-brand-700 hover:to-brand-600">
+          <i class="bi bi-check-lg"></i> Registrar empresa
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

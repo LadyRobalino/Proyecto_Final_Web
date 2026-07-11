@@ -1,422 +1,361 @@
 from django import forms
-from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
 from .models import (
-    Empresa, Vendedor, Comprador,
+    Usuario, Empresa, Vendedor, Comprador, Administrador,
     CategoriaProducto, Producto, Inventario,
-    Pedido, DetallePedido, Pago, Factura,
     Suscripcion, Comision,
-    Curso, Evaluacion, Calificacion, Notificacion
+    Pedido, DetallePedido, Pago, Factura,
+    Curso, Evaluacion, Calificacion, Notificacion,
+    ROL_USUARIO,
 )
 
-# ==========================
-# Empresas 
-# ==========================
+
+# =============================================================================
+# USUARIOS Y AUTENTICACIÓN
+# =============================================================================
+
+class UsuarioBaseForm(forms.Form):
+    """Base reutilizable para formularios que crean un Usuario + su perfil."""
+    username = forms.CharField(max_length=150, label="Usuario")
+    first_name = forms.CharField(max_length=150, label="Nombres")
+    last_name = forms.CharField(max_length=150, label="Apellidos")
+    email = forms.EmailField(label="Correo electrónico")
+    telefono = forms.CharField(max_length=20, required=False, label="Teléfono")
+    password1 = forms.CharField(widget=forms.PasswordInput, label="Contraseña")
+    password2 = forms.CharField(widget=forms.PasswordInput, label="Confirmar contraseña")
+
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        if Usuario.objects.filter(username=username).exists():
+            raise ValidationError("Ese nombre de usuario ya existe.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if Usuario.objects.filter(email=email).exists():
+            raise ValidationError("Ese correo ya está registrado.")
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get('password1'), cleaned.get('password2')
+        if p1 and p2 and p1 != p2:
+            raise ValidationError("Las contraseñas no coinciden.")
+        if p1:
+            validate_password(p1)
+        return cleaned
+
+    def crear_usuario(self, rol):
+        datos = self.cleaned_data
+        usuario = Usuario(
+            username=datos['username'],
+            first_name=datos['first_name'],
+            last_name=datos['last_name'],
+            email=datos['email'],
+            telefono=datos.get('telefono', ''),
+            rol=rol,
+        )
+        usuario.set_password(datos['password1'])
+        usuario.save()
+        return usuario
+
+
+class RegistroForm(UsuarioBaseForm):
+    ROLES_PUBLICOS = [c for c in ROL_USUARIO if c[0] != 'administrador']
+
+    rol = forms.ChoiceField(choices=ROLES_PUBLICOS, label="Tipo de cuenta")
+
+    # Empresa
+    ruc = forms.CharField(max_length=13, required=False, label="RUC")
+    razon_social = forms.CharField(max_length=200, required=False, label="Razón social")
+    representante_legal = forms.CharField(max_length=200, required=False, label="Representante legal")
+    direccion = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), required=False, label="Dirección")
+
+    # Vendedor
+    numero_identidad = forms.CharField(max_length=20, required=False, label="Cédula / Identidad")
+
+    # Comprador
+    tipo_negocio = forms.CharField(max_length=100, required=False, label="Tipo de negocio")
+    direccion_entrega = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), required=False,
+                                         label="Dirección de entrega")
+
+    def clean(self):
+        cleaned = super().clean()
+        rol = cleaned.get('rol')
+        requeridos = {
+            'empresa': ['ruc', 'razon_social', 'representante_legal', 'direccion'],
+            'vendedor': ['numero_identidad'],
+            'comprador': ['tipo_negocio', 'direccion_entrega'],
+        }.get(rol, [])
+        for campo in requeridos:
+            if not cleaned.get(campo):
+                self.add_error(campo, "Este campo es obligatorio para el rol seleccionado.")
+        return cleaned
+
+    @transaction.atomic
+    def guardar(self):
+        rol = self.cleaned_data['rol']
+        usuario = self.crear_usuario(rol)
+        if rol == 'empresa':
+            Empresa.objects.create(
+                usuario=usuario, ruc=self.cleaned_data['ruc'],
+                razon_social=self.cleaned_data['razon_social'],
+                representante_legal=self.cleaned_data['representante_legal'],
+                direccion=self.cleaned_data['direccion'],
+            )
+        elif rol == 'vendedor':
+            Vendedor.objects.create(
+                usuario=usuario, numero_identidad=self.cleaned_data['numero_identidad'],
+            )
+        elif rol == 'comprador':
+            Comprador.objects.create(
+                usuario=usuario, tipo_negocio=self.cleaned_data['tipo_negocio'],
+                direccion_entrega=self.cleaned_data['direccion_entrega'],
+            )
+        return usuario
+
+
+class UsuarioCreateForm(RegistroForm):
+    """Variante de RegistroForm para uso administrativo: permite crear cualquier rol."""
+    rol = forms.ChoiceField(choices=ROL_USUARIO, label="Rol")
+    area_trabajo = forms.CharField(max_length=100, required=False, label="Área de trabajo")
+    nivel_acceso = forms.IntegerField(required=False, initial=1, label="Nivel de acceso")
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('rol') == 'administrador' and not cleaned.get('area_trabajo'):
+            self.add_error('area_trabajo', "Este campo es obligatorio para el rol seleccionado.")
+        return cleaned
+
+    @transaction.atomic
+    def guardar(self):
+        if self.cleaned_data['rol'] == 'administrador':
+            usuario = self.crear_usuario('administrador')
+            Administrador.objects.create(
+                usuario=usuario, area_trabajo=self.cleaned_data['area_trabajo'],
+                nivel_acceso=self.cleaned_data.get('nivel_acceso') or 1,
+            )
+            return usuario
+        return super().guardar()
+
+
+class UsuarioForm(forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ['username', 'first_name', 'last_name', 'email', 'telefono', 'rol', 'is_active']
+        labels = {
+            'username': 'Usuario', 'first_name': 'Nombres', 'last_name': 'Apellidos',
+            'email': 'Correo electrónico', 'telefono': 'Teléfono', 'rol': 'Rol',
+            'is_active': 'Cuenta activa',
+        }
+
+
+# =============================================================================
+# EMPRESAS
+# =============================================================================
+
+class EmpresaCreateForm(UsuarioBaseForm):
+    ruc = forms.CharField(max_length=13, label="RUC")
+    razon_social = forms.CharField(max_length=200, label="Razón social")
+    representante_legal = forms.CharField(max_length=200, label="Representante legal")
+    direccion = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label="Dirección")
+    logo_url = forms.URLField(required=False, label="URL del logo")
+
+    @transaction.atomic
+    def guardar(self):
+        usuario = self.crear_usuario('empresa')
+        return Empresa.objects.create(
+            usuario=usuario, ruc=self.cleaned_data['ruc'],
+            razon_social=self.cleaned_data['razon_social'],
+            representante_legal=self.cleaned_data['representante_legal'],
+            direccion=self.cleaned_data['direccion'],
+            logo_url=self.cleaned_data['logo_url'],
+        )
+
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
-        fields = [
-            'ruc', 'razon_social', 'representante_legal',
-            'direccion', 'logo_url', 'estado'
-        ]
-        widgets = {
-            'ruc':                 forms.TextInput(attrs={'class': 'form-control'}),
-            'razon_social':        forms.TextInput(attrs={'class': 'form-control'}),
-            'representante_legal': forms.TextInput(attrs={'class': 'form-control'}),
-            'direccion':           forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'logo_url':            forms.URLInput(attrs={'class': 'form-control'}),
-            'estado':              forms.Select(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'ruc':                 _('Ingrese RUC por favor'),
-            'razon_social':        _('Ingrese razón social por favor'),
-            'representante_legal': _('Ingrese representante legal por favor'),
-            'direccion':           _('Ingrese dirección por favor'),
-            'logo_url':            _('Ingrese URL del logo por favor'),
-            'estado':              _('Seleccione el estado por favor'),
-        }
-
-    def clean_ruc(self):
-        valor = self.cleaned_data['ruc']
-        if len(valor) != 13:
-            raise forms.ValidationError("Ingrese un RUC válido con 13 dígitos")
-        return valor
-
-    def clean_razon_social(self):
-        valor = self.cleaned_data['razon_social']
-        num_palabras = len(valor.split())
-        if num_palabras < 2:
-            raise forms.ValidationError("Ingrese una razón social completa (mínimo 2 palabras)")
-        return valor
-
-    def clean_representante_legal(self):
-        valor = self.cleaned_data['representante_legal']
-        num_palabras = len(valor.split())
-        if num_palabras < 2:
-            raise forms.ValidationError("Ingrese dos nombres y apellidos por favor")
-        return valor
+        fields = ['ruc', 'razon_social', 'representante_legal', 'direccion', 'logo_url', 'estado']
+        widgets = {'direccion': forms.Textarea(attrs={'rows': 2})}
 
 
-# ==========================
-# Vendedores  (RF-06)
-# ==========================
+# =============================================================================
+# VENDEDORES
+# =============================================================================
 
-# ==========================
-# Vendedores  (RF-06)
-# ==========================
+class VendedorCreateForm(UsuarioBaseForm):
+    numero_identidad = forms.CharField(max_length=20, label="Cédula / Identidad")
+
+    @transaction.atomic
+    def guardar(self):
+        usuario = self.crear_usuario('vendedor')
+        return Vendedor.objects.create(
+            usuario=usuario, numero_identidad=self.cleaned_data['numero_identidad'],
+        )
+
 
 class VendedorForm(forms.ModelForm):
     class Meta:
         model = Vendedor
-        # Cambiado a 'estado_aprobacion' con barra baja para que coincida con tu base de datos
         fields = ['numero_identidad', 'estado_aprobacion', 'empresas_aprobadoras']
-        widgets = {
-            'numero_identidad':     forms.TextInput(attrs={'class': 'form-control'}),
-            'estado_aprobacion':    forms.Select(attrs={'class': 'form-select'}),
-            'empresas_aprobadoras': forms.SelectMultiple(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'numero_identidad':     _('Ingrese número de identidad por favor'),
-            'estado_aprobacion':    _('Seleccione el estado de aprobación por favor'),
-            'empresas_aprobadoras': _('Seleccione las empresas aprobadoras por favor'),
-        }
 
-    def clean_numero_identidad(self):
-        valor = self.cleaned_data['numero_identidad']
-        if len(valor) != 10:
-            raise forms.ValidationError("Ingrese cédula con 10 dígitos")
-        return valor
 
-# ==========================
-# Compradores  (RF-01)
-# ==========================
+# =============================================================================
+# COMPRADORES
+# =============================================================================
+
+class CompradorCreateForm(UsuarioBaseForm):
+    tipo_negocio = forms.CharField(max_length=100, label="Tipo de negocio")
+    ruc = forms.CharField(max_length=13, required=False, label="RUC (opcional)")
+    direccion_entrega = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label="Dirección de entrega")
+    limite_credito = forms.DecimalField(max_digits=12, decimal_places=2, required=False,
+                                         initial=0, label="Límite de crédito")
+
+    @transaction.atomic
+    def guardar(self):
+        usuario = self.crear_usuario('comprador')
+        return Comprador.objects.create(
+            usuario=usuario, tipo_negocio=self.cleaned_data['tipo_negocio'],
+            ruc=self.cleaned_data.get('ruc', ''),
+            direccion_entrega=self.cleaned_data['direccion_entrega'],
+            limite_credito=self.cleaned_data.get('limite_credito') or 0,
+        )
+
 
 class CompradorForm(forms.ModelForm):
     class Meta:
         model = Comprador
         fields = ['tipo_negocio', 'ruc', 'direccion_entrega', 'limite_credito']
-        widgets = {
-            'tipo_negocio':      forms.TextInput(attrs={'class': 'form-control'}),
-            'ruc':               forms.TextInput(attrs={'class': 'form-control'}),
-            'direccion_entrega': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'limite_credito':    forms.NumberInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'tipo_negocio':      _('Ingrese tipo de negocio por favor'),
-            'ruc':               _('Ingrese RUC (opcional) por favor'),
-            'direccion_entrega': _('Ingrese dirección de entrega por favor'),
-            'limite_credito':    _('Ingrese límite de crédito por favor'),
-        }
-
-    def clean_ruc(self):
-        valor = self.cleaned_data['ruc']
-        if valor and len(valor) != 13:
-            raise forms.ValidationError("Si ingresa un RUC, debe contener exactamente 13 dígitos")
-        return valor
+        widgets = {'direccion_entrega': forms.Textarea(attrs={'rows': 2})}
 
 
-# ==========================
-# Categorías  (RF-03-05)
-# ==========================
+# =============================================================================
+# PRODUCTOS Y CATEGORÍAS
+# =============================================================================
 
 class CategoriaProductoForm(forms.ModelForm):
     class Meta:
         model = CategoriaProducto
         fields = ['nombre', 'descripcion', 'activo']
-        widgets = {
-            'nombre':      forms.TextInput(attrs={'class': 'form-control'}),
-            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'activo':      forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-        labels = {
-            'nombre':      _('Ingrese nombre de la categoría por favor'),
-            'descripcion': _('Ingrese descripción por favor'),
-            'activo':      _('Marque si está activa por favor'),
-        }
+        widgets = {'descripcion': forms.Textarea(attrs={'rows': 2})}
 
-
-# ==========================
-# Productos  (RF-03)
-# ==========================
 
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = [
-            'nombre', 'descripcion', 'precio_base', 'precio_venta',
-            'unidad_medida', 'activo', 'empresa', 'categoria'
-        ]
-        widgets = {
-            'nombre':        forms.TextInput(attrs={'class': 'form-control'}),
-            'descripcion':   forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'precio_base':   forms.NumberInput(attrs={'class': 'form-control'}),
-            'precio_venta':  forms.NumberInput(attrs={'class': 'form-control'}),
-            'unidad_medida': forms.TextInput(attrs={'class': 'form-control'}),
-            'activo':        forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'empresa':       forms.Select(attrs={'class': 'form-select'}),
-            'categoria':     forms.Select(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'nombre':        _('Ingrese nombre del producto por favor'),
-            'descripcion':   _('Ingrese descripción por favor'),
-            'precio_base':   _('Ingrese precio base por favor'),
-            'precio_venta':  _('Ingrese precio de venta por favor'),
-            'unidad_medida': _('Ingrese unidad de medida por favor'),
-            'activo':        _('Marque si está activo por favor'),
-            'empresa':       _('Seleccione la empresa por favor'),
-            'categoria':     _('Seleccione la categoría por favor'),
-        }
+        fields = ['nombre', 'descripcion', 'categoria', 'precio_base', 'precio_venta',
+                  'unidad_medida', 'empresa', 'activo']
+        widgets = {'descripcion': forms.Textarea(attrs={'rows': 2})}
 
 
-class ProductoEmpresaForm(forms.ModelForm):
-    def __init__(self, empresa, *args, **kwargs):
-        super(ProductoEmpresaForm, self).__init__(*args, **kwargs)
-        self.initial['empresa'] = empresa
-        self.fields["empresa"].widget = forms.widgets.HiddenInput()
-
-    class Meta:
-        model = Producto
-        fields = [
-            'nombre', 'descripcion', 'precio_base', 'precio_venta',
-            'unidad_medida', 'activo', 'empresa', 'categoria'
-        ]
-        widgets = {
-            'nombre':        forms.TextInput(attrs={'class': 'form-control'}),
-            'descripcion':   forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'precio_base':   forms.NumberInput(attrs={'class': 'form-control'}),
-            'precio_venta':  forms.NumberInput(attrs={'class': 'form-control'}),
-            'unidad_medida': forms.TextInput(attrs={'class': 'form-control'}),
-            'activo':        forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'categoria':     forms.Select(attrs={'class': 'form-select'}),
-        }
-
-
-# ==========================
-# Inventario  (RF-04)
-# ==========================
-
-# ==========================
-# Inventario  (RF-04)
-# ==========================
+# =============================================================================
+# INVENTARIO
+# =============================================================================
 
 class InventarioForm(forms.ModelForm):
     class Meta:
         model = Inventario
-        # Usamos los nombres de campos reales de tu modelo en la base de datos
-        fields = ['stock_actual', 'stock_minimo', 'stock_maximo', 'ubicacion']
-        widgets = {
-            'stock_actual': forms.NumberInput(attrs={'class': 'form-control'}),
-            'stock_minimo': forms.NumberInput(attrs={'class': 'form-control'}),
-            'stock_maximo': forms.NumberInput(attrs={'class': 'form-control'}),
-            'ubicacion':    forms.TextInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'stock_actual': _('Ingrese stock actual por favor'),
-            'stock_minimo': _('Ingrese stock mínimo por favor'),
-            'stock_maximo': _('Ingrese stock máximo por favor'),
-            'ubicacion':    _('Ingrese ubicación en bodega por favor'),
-        }
+        fields = ['producto', 'stock_actual', 'stock_minimo', 'stock_maximo', 'ubicacion']
 
-# ==========================
-# Pedidos  (RF-05)
-# ==========================
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields.pop('producto', None)
+        else:
+            self.fields['producto'].queryset = Producto.objects.filter(inventario__isnull=True)
 
-class PedidoForm(forms.ModelForm):
+
+# =============================================================================
+# PLATAFORMA — Suscripciones y Comisiones
+# =============================================================================
+
+class SuscripcionForm(forms.ModelForm):
     class Meta:
-        model = Pedido
-        fields = ['numero_pedido', 'estado', 'comprador', 'vendedor', 'empresa']
+        model = Suscripcion
+        fields = ['empresa', 'tipo_plan', 'precio', 'comision_plataforma', 'estado',
+                  'fecha_inicio', 'fecha_fin']
         widgets = {
-            'numero_pedido': forms.TextInput(attrs={'class': 'form-control'}),
-            'estado':        forms.Select(attrs={'class': 'form-select'}),
-            'comprador':     forms.Select(attrs={'class': 'form-select'}),
-            'vendedor':      forms.Select(attrs={'class': 'form-select'}),
-            'empresa':       forms.Select(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'numero_pedido': _('Ingrese el número de pedido por favor'),
-            'estado':        _('Seleccione el estado del pedido por favor'),
-            'comprador':     _('Seleccione el comprador por favor'),
-            'vendedor':      _('Seleccione el vendedor por favor'),
-            'empresa':       _('Seleccione la empresa por favor'),
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
         }
 
-
-class DetallePedidoForm(forms.ModelForm):
-    def __init__(self, pedido, *args, **kwargs):
-        super(DetallePedidoForm, self).__init__(*args, **kwargs)
-        self.initial['pedido'] = pedido
-        self.fields["pedido"].widget = forms.widgets.HiddenInput()
-
-    class Meta:
-        model = DetallePedido
-        fields = ['pedido', 'producto', 'cantidad', 'precio_unitario', 'descuento']
-        widgets = {
-            'producto':        forms.Select(attrs={'class': 'form-select'}),
-            'content':         forms.NumberInput(attrs={'class': 'form-control'}),
-            'precio_unitario': forms.NumberInput(attrs={'class': 'form-control'}),
-            'descuento':       forms.NumberInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'producto':        _('Seleccione el producto por favor'),
-            'cantidad':        _('Ingrese cantidad por favor'),
-            'precio_unitario': _('Ingrese precio unitario por favor'),
-            'descuento':       _('Ingrese descuento por favor'),
-        }
-
-
-# ==========================
-# Pagos  (RF-08)
-# ==========================
-
-class PagoForm(forms.ModelForm):
-    class Meta:
-        model = Pago
-        fields = ['pedido', 'monto', 'tipo', 'metodo_pago', 'referencia_pago']
-        widgets = {
-            'pedido':          forms.Select(attrs={'class': 'form-select'}),
-            'monto':           forms.NumberInput(attrs={'class': 'form-control'}),
-            'tipo':            forms.Select(attrs={'class': 'form-select'}),
-            'metodo_pago':     forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'PayPhone, Kushki, transferencia...'}),
-            'referencia_pago': forms.TextInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'pedido':          _('Seleccione el pedido por favor'),
-            'monto':           _('Ingrese el monto por favor'),
-            'tipo':            _('Seleccione el tipo de pago por favor'),
-            'metodo_pago':     _('Ingrese el método de pago por favor'),
-            'referencia_pago': _('Ingrese la referencia de pago por favor'),
-        }
-
-
-# ==========================
-# Comisiones  (RF-09)
-# ==========================
 
 class ComisionForm(forms.ModelForm):
     class Meta:
         model = Comision
         fields = ['vendedor', 'pedido', 'porcentaje', 'monto_comision', 'estado']
-        widgets = {
-            'vendedor':       forms.Select(attrs={'class': 'form-select'}),
-            'pedido':         forms.Select(attrs={'class': 'form-select'}),
-            'porcentaje':     forms.NumberInput(attrs={'class': 'form-control'}),
-            'monto_comision': forms.NumberInput(attrs={'class': 'form-control'}),
-            'estado':         forms.Select(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'vendedor':       _('Seleccione el vendedor por favor'),
-            'pedido':         _('Seleccione el pedido por favor'),
-            'porcentaje':     _('Ingrese el porcentaje por favor'),
-            'monto_comision': _('Ingrese el monto de la comisión por favor'),
-            'estado':         _('Seleccione el estado por favor'),
-        }
 
 
-# ==========================
-# Suscripciones  (RF-11)
-# ==========================
-class SuscripcionForm(forms.ModelForm):
+# =============================================================================
+# VENTAS — Pedidos, Pagos, Facturas
+# =============================================================================
+
+class PedidoForm(forms.ModelForm):
     class Meta:
-        model = Suscripcion
-        # Corregido con guion bajo para que coincida exactamente con tu base de datos real
-        fields = [
-            'empresa', 'tipo_plan', 'precio',
-            'comision_plataforma', 'estado', 'fecha_inicio', 'fecha_fin'
-        ]
-        widgets = {
-            'empresa':              forms.Select(attrs={'class': 'form-select'}),
-            'tipo_plan':            forms.Select(attrs={'class': 'form-select'}),
-            'precio':               forms.NumberInput(attrs={'class': 'form-control'}),
-            'comision_plataforma':  forms.NumberInput(attrs={'class': 'form-control'}),
-            'estado':               forms.Select(attrs={'class': 'form-select'}),
-            'fecha_inicio':         forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'fecha_fin':            forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-        }
-        labels = {
-            'empresa':             _('Seleccione la empresa por favor'),
-            'tipo_plan':           _('Seleccione el plan por favor'),
-            'precio':              _('Ingrese el precio por favor'),
-            'comision_plataforma': _('Ingrese la comisión de la plataforma por favor'),
-            'estado':              _('Seleccione el estado por favor'),
-            'fecha_inicio':        _('Seleccione la fecha de inicio por favor'),
-            'fecha_fin':           _('Seleccione la fecha de fin por favor'),
-        }
+        model = Pedido
+        fields = ['comprador', 'vendedor', 'empresa', 'estado']
 
 
-# ==========================
-# Cursos  (RF-07)
-# ==========================
+class DetallePedidoForm(forms.ModelForm):
+    class Meta:
+        model = DetallePedido
+        fields = ['producto', 'cantidad', 'precio_unitario', 'descuento']
+
+
+DetallePedidoFormSet = forms.inlineformset_factory(
+    Pedido, DetallePedido, form=DetallePedidoForm,
+    extra=1, can_delete=True,
+)
+
+
+class PagoForm(forms.ModelForm):
+    class Meta:
+        model = Pago
+        fields = ['pedido', 'monto', 'tipo', 'metodo_pago', 'referencia_pago', 'estado']
+
+
+class FacturaForm(forms.ModelForm):
+    class Meta:
+        model = Factura
+        fields = ['pedido', 'subtotal', 'estado_sri', 'clave_acceso']
+
+
+# =============================================================================
+# CAPACITACIÓN
+# =============================================================================
 
 class CursoForm(forms.ModelForm):
     class Meta:
         model = Curso
-        fields = ['empresa', 'titulo', 'descripcion', 'duracion_horas', 'url_contenido', 'activo', 'vendedores']
-        widgets = {
-            'empresa':        forms.Select(attrs={'class': 'form-select'}),
-            'titulo':         forms.TextInput(attrs={'class': 'form-control'}),
-            'descripcion':    forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'duracion_horas': forms.NumberInput(attrs={'class': 'form-control'}),
-            'url_contenido':  forms.URLInput(attrs={'class': 'form-control'}),
-            'activo':         forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'vendedores':     forms.SelectMultiple(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'empresa':        _('Seleccione la empresa por favor'),
-            'titulo':         _('Ingrese el título del curso por favor'),
-            'descripcion':    _('Ingrese la descripción por favor'),
-            'duracion_horas': _('Ingrese la duración en horas por favor'),
-            'url_contenido':  _('Ingrese la URL del contenido por favor'),
-            'activo':         _('Marque si está activo por favor'),
-            'vendedores':     _('Seleccione los vendedores asignados por favor'),
-        }
+        fields = ['empresa', 'titulo', 'descripcion', 'duracion_horas', 'url_contenido',
+                  'activo', 'vendedores']
+        widgets = {'descripcion': forms.Textarea(attrs={'rows': 3})}
 
-
-# ==========================
-# Evaluaciones  (RF-07-02)
-# ==========================
 
 class EvaluacionForm(forms.ModelForm):
     class Meta:
         model = Evaluacion
         fields = ['vendedor', 'curso', 'puntaje_obtenido', 'puntaje_minimo']
-        widgets = {
-            'vendedor':         forms.Select(attrs={'class': 'form-select'}),
-            'curso':            forms.Select(attrs={'class': 'form-select'}),
-            'puntaje_obtenido': forms.NumberInput(attrs={'class': 'form-control'}),
-            'puntaje_minimo':   forms.NumberInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'vendedor':         _('Seleccione el vendedor por favor'),
-            'curso':            _('Seleccione el curso por favor'),
-            'puntaje_obtenido': _('Ingrese el puntaje obtenido por favor'),
-            'puntaje_minimo':   _('Ingrese el puntaje mínimo por favor'),
-        }
 
 
-# ==========================
-# Calificaciones  (RF-12)
-# ==========================
+# =============================================================================
+# CALIFICACIONES Y NOTIFICACIONES
+# =============================================================================
 
 class CalificacionForm(forms.ModelForm):
     class Meta:
         model = Calificacion
-        fields = [
-            'tipo_calificado', 'vendedor_calificado', 'empresa_calificada',
-            'puntuacion', 'comentario', 'es_incidencia'
-        ]
-        widgets = {
-            'tipo_calificado':     forms.Select(attrs={'class': 'form-select'}),
-            'vendedor_calificado': forms.Select(attrs={'class': 'form-select'}),
-            'empresa_calificada':  forms.Select(attrs={'class': 'form-select'}),
-            'puntuacion':          forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 5, 'step': 0.5}),
-            'comentario':          forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'es_incidencia':       forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-        labels = {
-            'tipo_calificado':     _('Seleccione el tipo a calificar por favor'),
-            'vendedor_calificado': _('Seleccione el vendedor por favor'),
-            'empresa_calificada':  _('Seleccione la empresa por favor'),
-            'puntuacion':          _('Ingrese la puntuación por favor'),
-            'comentario':          _('Ingrese un comentario por favor'),
-            'es_incidencia':       _('Marque si corresponde a una incidencia por favor'),
-        }
+        fields = ['tipo_calificado', 'vendedor_calificado', 'empresa_calificada',
+                  'puntuacion', 'comentario', 'es_incidencia']
+        widgets = {'comentario': forms.Textarea(attrs={'rows': 3})}
+
+
+class NotificacionForm(forms.ModelForm):
+    class Meta:
+        model = Notificacion
+        fields = ['destinatario', 'tipo', 'titulo', 'mensaje']
+        widgets = {'mensaje': forms.Textarea(attrs={'rows': 3})}

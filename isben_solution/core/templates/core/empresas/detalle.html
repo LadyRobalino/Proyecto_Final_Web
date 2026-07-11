@@ -1,0 +1,68 @@
+{% extends 'core/master.html' %}
+{% block title %}{{ empresa.razon_social }}{% endblock %}
+{% block header_title %}{{ empresa.razon_social }}{% endblock %}
+{% block header_subtitle %}Perfil de la empresa distribuidora.{% endblock %}
+
+{% block content %}
+<a href="{% url 'lista_empresas' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver a empresas</a>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-1">
+    <div class="mb-4 flex items-center gap-4">
+      <div class="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-2xl font-bold text-white shadow-soft">
+        {{ empresa.razon_social|slice:":1" }}
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">{{ empresa.razon_social }}</h2>
+        {% include 'core/partials/_badge_estado.html' with estado=empresa.estado %}
+      </div>
+    </div>
+    <dl class="space-y-3 text-sm">
+      <div><dt class="text-slate-400">RUC</dt><dd class="font-medium text-slate-700">{{ empresa.ruc }} <span class="text-xs text-slate-400">({{ empresa.get_tipo_ruc }})</span></dd></div>
+      <div><dt class="text-slate-400">Representante legal</dt><dd class="font-medium text-slate-700">{{ empresa.representante_legal }}</dd></div>
+      <div><dt class="text-slate-400">Dirección</dt><dd class="font-medium text-slate-700">{{ empresa.direccion }}</dd></div>
+      <div><dt class="text-slate-400">Correo</dt><dd class="font-medium text-slate-700">{{ empresa.usuario.email }}</dd></div>
+      <div><dt class="text-slate-400">Teléfono</dt><dd class="font-medium text-slate-700">{{ empresa.usuario.telefono|default:"—" }}</dd></div>
+    </dl>
+    {% if user.rol == 'administrador' or user.empresa.pk == empresa.pk %}
+    <a href="{% url 'editar_empresa' empresa.pk %}" class="mt-5 flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100">
+      <i class="bi bi-pencil"></i> Editar empresa
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6 lg:col-span-2">
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-box-seam"></i> Productos activos</h3>
+      {% if productos %}
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {% for producto in productos %}
+        <a href="{% url 'detalle_producto' producto.pk %}" class="rounded-xl border border-slate-100 p-3 text-sm transition hover:border-brand-200 hover:bg-brand-50/40">
+          <p class="font-semibold text-slate-700">{{ producto.nombre }}</p>
+          <p class="text-xs text-slate-400">${{ producto.precio_venta }} · {{ producto.unidad_medida }}</p>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-400">Esta empresa aún no registra productos.</p>
+      {% endif %}
+    </div>
+
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-person-badge"></i> Vendedores autorizados</h3>
+      {% if vendedores_autorizados %}
+      <ul class="divide-y divide-slate-100">
+        {% for vendedor in vendedores_autorizados %}
+        <li class="flex items-center justify-between py-2 text-sm">
+          <a href="{% url 'detalle_vendedor' vendedor.pk %}" class="font-medium text-slate-700 hover:text-brand-600">{{ vendedor.usuario.get_full_name }}</a>
+          <span class="text-xs text-slate-400">{{ vendedor.numero_identidad }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-slate-400">Aún no autorizas vendedores para esta empresa.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

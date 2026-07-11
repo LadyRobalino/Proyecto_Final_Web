@@ -62,6 +62,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.notificaciones',
             ],
         },
     },
@@ -117,8 +118,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 AUTH_USER_MODEL = 'core.Usuario'
-# Al final del archivo agrega esto:
-AUTH_USER_MODEL = 'core.Usuario'
 
-LANGUAGE_CODE = 'es-ec'
-TIME_ZONE = 'America/Guayaquil'
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'inicio'
+LOGOUT_REDIRECT_URL = 'login'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
