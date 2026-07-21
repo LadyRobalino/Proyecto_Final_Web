@@ -1,0 +1,175 @@
+{% extends "master.html" %}
+{% load static %}
+{% block title %}Crear cuenta{% endblock %}
+
+{% block auth_content %}
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-orange-50 to-slate-50 px-4 py-12">
+  <div class="w-full max-w-2xl rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-brand-100/50 sm:p-10">
+
+    <div class="mb-8 flex flex-col items-center justify-center text-center">
+      <img src="{% static 'core/img/logos/isben-logo.png' %}" alt="ISBEN Solution" class="h-12 w-auto object-contain mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-800">Crea tu cuenta</h2>
+        <p class="text-sm text-slate-400 mt-1">Elige tu perfil y completa tus datos.</p>
+      </div>
+    </div>
+
+    {% if messages %}
+<div class="mb-6 space-y-3">
+  {% for message in messages %}
+  <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition
+       class="flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm
+       {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300
+       {% elif message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300
+       {% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300
+       {% else %}border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-800 dark:bg-slate-800 dark:text-brand-300{% endif %}">
+    <i class="bi {% if message.tags == 'success' %}bi-check-circle-fill{% elif message.tags == 'error' %}bi-x-circle-fill{% elif message.tags == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} mt-0.5"></i>
+    <p class="flex-1 text-sm font-medium">{{ message }}</p>
+    <button @click="show=false" class="text-current opacity-60 hover:opacity-100"><i class="bi bi-x-lg"></i></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+
+    <form method="post" novalidate x-data="{ rol: '{{ form.rol.value|default:'empresa' }}' }" class="space-y-6">
+      {% csrf_token %}
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-600">¿Cómo quieres usar la plataforma?</label>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label class="cursor-pointer rounded-2xl border-2 p-4 text-center transition"
+                 :class="rol === 'empresa' ? 'border-brand-500 bg-brand-50 shadow-soft' : 'border-slate-200 hover:border-brand-200'">
+            <input type="radio" name="rol" value="empresa" x-model="rol" class="sr-only">
+            <i class="bi bi-building block text-2xl" :class="rol === 'empresa' ? 'text-brand-600' : 'text-slate-400'"></i>
+            <span class="mt-2 block text-sm font-semibold text-slate-700">Empresa</span>
+            <span class="text-xs text-slate-400">Distribuidora</span>
+          </label>
+          <label class="cursor-pointer rounded-2xl border-2 p-4 text-center transition"
+                 :class="rol === 'vendedor' ? 'border-brand-500 bg-brand-50 shadow-soft' : 'border-slate-200 hover:border-brand-200'">
+            <input type="radio" name="rol" value="vendedor" x-model="rol" class="sr-only">
+            <i class="bi bi-person-badge block text-2xl" :class="rol === 'vendedor' ? 'text-brand-600' : 'text-slate-400'"></i>
+            <span class="mt-2 block text-sm font-semibold text-slate-700">Vendedor</span>
+            <span class="text-xs text-slate-400">Independiente</span>
+          </label>
+          <label class="cursor-pointer rounded-2xl border-2 p-4 text-center transition"
+                 :class="rol === 'comprador' ? 'border-brand-500 bg-brand-50 shadow-soft' : 'border-slate-200 hover:border-brand-200'">
+            <input type="radio" name="rol" value="comprador" x-model="rol" class="sr-only">
+            <i class="bi bi-person-check block text-2xl" :class="rol === 'comprador' ? 'text-brand-600' : 'text-slate-400'"></i>
+            <span class="mt-2 block text-sm font-semibold text-slate-700">Comprador</span>
+            <span class="text-xs text-slate-400">Mayorista</span>
+          </label>
+        </div>
+        {% if form.rol.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.rol.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Nombres</label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.first_name.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Apellidos</label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.last_name.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Usuario</label>
+          {{ form.username }}
+          {% if form.username.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.username.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Correo electrónico</label>
+          {{ form.email }}
+          {% if form.email.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Teléfono</label>
+          {{ form.telefono }}
+        </div>
+        <div></div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Contraseña</label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.password1.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Confirmar contraseña</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.password2.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <!-- Campos de Empresa -->
+      <div x-show="rol === 'empresa'" x-cloak class="space-y-4 rounded-2xl bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-500"><i class="bi bi-building"></i> Datos de la empresa</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">RUC</label>
+            {{ form.ruc }}
+            {% if form.ruc.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.ruc.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Razón social</label>
+            {{ form.razon_social }}
+            {% if form.razon_social.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.razon_social.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Representante legal</label>
+            {{ form.representante_legal }}
+            {% if form.representante_legal.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.representante_legal.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Dirección</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.direccion.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Campos de Vendedor -->
+      <div x-show="rol === 'vendedor'" x-cloak class="space-y-4 rounded-2xl bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-500"><i class="bi bi-person-badge"></i> Datos del vendedor</p>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-600">Cédula / Identidad</label>
+          {{ form.numero_identidad }}
+          {% if form.numero_identidad.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.numero_identidad.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <!-- Campos de Comprador -->
+      <div x-show="rol === 'comprador'" x-cloak class="space-y-4 rounded-2xl bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-500"><i class="bi bi-person-check"></i> Datos del comprador</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Tipo de negocio</label>
+            {{ form.tipo_negocio }}
+            {% if form.tipo_negocio.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.tipo_negocio.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-600">Ciudad</label>
+            {{ form.ciudad }}
+            {% if form.ciudad.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.ciudad.errors.0 }}</p>{% endif %}
+          </div>
+          <div class="sm:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-slate-600">Dirección de entrega</label>
+            {{ form.direccion_entrega }}
+            {% if form.direccion_entrega.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.direccion_entrega.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <button type="submit"
+              class="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:from-[#ffb300] hover:to-[#e23310]">
+        Crear mi cuenta <i class="bi bi-arrow-right"></i>
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-slate-500">
+      ¿Ya tienes cuenta?
+      <a href="{% url 'login' %}" class="font-semibold text-brand-600 hover:text-brand-700">Inicia sesión</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

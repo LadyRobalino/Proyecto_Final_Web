@@ -1,0 +1,450 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ISBEN Solution{% endblock %} · ISBEN Solution</title>
+  <link rel="icon" type="image/png" href="{% static 'core/img/logos/iso_1.png' %}">
+
+  <!-- Aplica el tema guardado antes de pintar, para evitar parpadeo -->
+  <script>
+    if (localStorage.getItem('isben_tema') === 'oscuro') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="{% static 'core/js/tailwindcss.js' %}"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Poppins', 'ui-sans-serif', 'system-ui'] },
+          colors: {
+            brand: {
+              50: '#fff1eb', 100: '#ffe0d1', 200: '#ffbfa3', 300: '#ff9670',
+              400: '#fc6a45', 500: '#fb4318', 600: '#e23310', 700: '#bc260c',
+              800: '#951f0e', 900: '#7a1c10',
+            },
+            isbenYellow: '#FFC22F',
+          },
+          boxShadow: { soft: '0 10px 40px -12px rgba(251, 67, 24, 0.35)' },
+        },
+      },
+    };
+  </script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="{% static 'core/css/bootstrap-icons.css' %}?v=2">
+
+  <!-- Alpine.js (el plugin collapse debe cargar antes que el núcleo) -->
+  <script defer src="{% static 'core/js/alpine-collapse.min.js' %}"></script>
+  <script defer src="{% static 'core/js/alpine.min.js' %}"></script>
+
+  <!-- CSS propio -->
+  <link rel="stylesheet" href="{% static 'core/css/estilos.css' %}">
+  
+
+  <style>
+    [x-cloak] {
+      display: none !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #c7d2fe;
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a5b4fc;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    body {
+      background: #f4f5fb;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    main.pagina-contenido {
+      animation: fadeInUp 0.35s ease-out;
+    }
+
+    @keyframes ping-suave {
+
+      75%,
+      100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+
+    .badge-ping {
+      animation: ping-suave 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    a,
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @media print {
+
+      aside,
+      header,
+      footer,
+      .no-imprimir {
+        display: none !important;
+      }
+
+      main.pagina-contenido {
+        padding: 0 !important;
+        animation: none !important;
+      }
+
+      body {
+        background: #fff !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-sans text-slate-700 antialiased" x-data="{ sidebarOpen: false }">
+
+  {% if user.is_authenticated %}
+  <div class="flex min-h-screen">
+
+    <!-- =============== SIDEBAR =============== -->
+    <aside
+      class="fixed inset-y-0 left-0 z-40 w-60 transform bg-gradient-to-b from-[#2b0f06] via-[#4a1608] to-[#1a0904] text-orange-100 transition-transform duration-300 lg:static lg:translate-x-0"
+      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+      <div class="flex h-full flex-col">
+        <div class="flex items-center justify-center px-6 py-6">
+          <img src="{% static 'core/img/logos/isben-logo.png' %}" alt="ISBEN Solution" class="w-full max-w-[200px] object-contain">
+        </div>
+
+        <nav class="mt-2 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
+          <div>
+            <a href="{% url 'inicio' %}"
+              class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition {% if request.resolver_match.url_name == 'inicio' %}bg-white/10 text-white shadow-soft{% else %}text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white{% endif %}">
+              {% if request.resolver_match.url_name == 'inicio' %}
+              <span class="absolute -left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-white"></span>
+              {% endif %}
+              <i class="bi bi-speedometer2 text-lg"></i> Panel principal
+            </a>
+          </div>
+
+          <div>
+            
+<a href="{% url 'mi_cuenta' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-person-circle text-lg"></i> Mi cuenta
+</a>
+            {% if user.rol == 'comprador' %}
+            
+<a href="{% url 'lista_direcciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-geo-alt text-lg"></i> Mis direcciones
+</a>
+            {% endif %}
+          </div>
+
+          {% if user.rol == 'administrador' %}
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Usuarios</div>
+          
+<a href="{% url 'lista_usuarios' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-people text-lg"></i> Usuarios
+</a>
+          
+<a href="{% url 'lista_empresas' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-building text-lg"></i> Empresas
+</a>
+          
+<a href="{% url 'lista_vendedores' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-person-badge text-lg"></i> Vendedores
+</a>
+          
+<a href="{% url 'lista_compradores' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-person-check text-lg"></i> Compradores
+</a>
+          {% elif user.rol == 'vendedor' %}
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Red</div>
+          
+<a href="{% url 'lista_empresas' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-building text-lg"></i> Empresas
+</a>
+          
+<a href="{% url 'lista_compradores' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-person-check text-lg"></i> Compradores
+</a>
+          {% endif %}
+
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Catálogo</div>
+          
+<a href="{% url 'lista_categorias' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-tags text-lg"></i> Categorías
+</a>
+          
+<a href="{% url 'lista_productos' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-box-seam text-lg"></i> Productos
+</a>
+          {% if user.rol in 'empresa,vendedor' %}
+          
+<a href="{% url 'lista_inventario' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-clipboard-data text-lg"></i> Inventario
+</a>
+          {% endif %}
+
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Ventas</div>
+          
+<a href="{% url 'lista_pedidos' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-cart-check text-lg"></i> Pedidos
+</a>
+          
+<a href="{% url 'lista_pagos' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-credit-card text-lg"></i> Pagos
+</a>
+          
+<a href="{% url 'lista_facturas' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-receipt text-lg"></i> Facturas
+</a>
+
+          {% if user.rol in 'administrador,empresa,vendedor' %}
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Plataforma</div>
+          {% if user.rol == 'administrador' %}
+          
+<a href="{% url 'lista_planes' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-card-list text-lg"></i> Planes de Suscripción
+</a>
+          
+<a href="{% url 'lista_suscripciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-gem text-lg"></i> Suscripciones
+</a>
+          {% endif %}
+          {% if user.rol == 'empresa' %}
+          
+<a href="{% url 'lista_suscripciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-gem text-lg"></i> Mi Suscripción
+</a>
+          
+<a href="{% url 'lista_comisiones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-percent text-lg"></i> Comisiones
+</a>
+          
+<a href="{% url 'lista_solicitudes_colaboracion' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-person-plus text-lg"></i> Postulaciones Vendedores
+</a>
+          
+<a href="{% url 'lista_vendedores' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-people text-lg"></i> Vendedores asociados
+</a>
+          
+<a href="{% url 'lista_promociones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-tag text-lg"></i> Promociones
+</a>
+          
+<a href="{% url 'estadisticas_empresa' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-bar-chart text-lg"></i> Estadísticas
+</a>
+          {% endif %}
+          {% if user.rol == 'vendedor' %}
+          
+<a href="{% url 'lista_suscripciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-gem text-lg"></i> Mi Suscripción
+</a>
+          
+<a href="{% url 'lista_comisiones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-percent text-lg"></i> Comisiones
+</a>
+          {% endif %}
+          {% endif %}
+
+          {% if user.rol in 'administrador,vendedor' %}
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Capacitación</div>
+          
+<a href="{% url 'lista_cursos' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-mortarboard text-lg"></i> Cursos
+</a>
+          
+<a href="{% url 'lista_evaluaciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-patch-check text-lg"></i> Evaluaciones
+</a>
+          {% endif %}
+
+          <div class="mt-6 mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-orange-400/80">Sistema</div>
+          
+<a href="{% url 'lista_calificaciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-star text-lg"></i> Calificaciones
+</a>
+          
+<a href="{% url 'lista_notificaciones' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-bell text-lg"></i> Notificaciones
+</a>
+          {% if user.rol == 'administrador' %}
+          
+<a href="{% url 'lista_incidencias' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-exclamation-octagon text-lg"></i> Incidencias
+</a>
+          
+<a href="{% url 'reportes' %}" class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-orange-200 hover:translate-x-0.5 hover:bg-white/5 hover:text-white">
+  <i class="bi bi-graph-up text-lg"></i> Reportes
+</a>
+          {% endif %}
+        </nav>
+
+        <div class="border-t border-white/10 p-4">
+          <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-orange-200 transition hover:bg-white/5 hover:text-white">
+              <i class="bi bi-box-arrow-right text-lg"></i> Cerrar sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <div class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+      x-transition.opacity></div>
+
+    <!-- =============== MAIN =============== -->
+    <div class="flex min-h-screen flex-1 flex-col lg:pl-0">
+      <header
+        class="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur lg:px-8">
+        <div class="flex items-center gap-3">
+          <button @click="sidebarOpen = !sidebarOpen"
+            class="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 lg:hidden">
+            <i class="bi bi-list text-2xl"></i>
+          </button>
+          <div>
+            <h1 class="text-lg font-bold text-slate-800 lg:text-xl">{% block header_title %}{% endblock %}</h1>
+            <p class="hidden text-xs text-slate-400 sm:block">{% block header_subtitle %}Gestiona tu operación mayorista
+              desde un solo lugar.{% endblock %}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          {% if user.rol == 'comprador' %}
+          <a href="{% url 'ver_carrito' %}"
+            class="relative grid h-10 w-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-brand-600"
+            title="Carrito">
+            <i class="bi bi-cart3 text-xl"></i>
+            {% if carrito_cantidad_global %}
+            <span
+              class="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">{{ carrito_cantidad_global }}</span>
+            {% endif %}
+          </a>
+          {% endif %}
+          <a href="{% url 'lista_notificaciones' %}"
+            class="relative grid h-10 w-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-brand-600"
+            title="Notificaciones">
+            <i class="bi bi-bell text-xl"></i>
+            {% if notificaciones_no_leidas_global %}
+            <span class="absolute right-1.5 top-1.5 flex h-2.5 w-2.5">
+              <span class="badge-ping absolute inline-flex h-full w-full rounded-full bg-rose-400"></span>
+              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+            </span>
+            {% endif %}
+          </a>
+
+          <div class="flex items-center gap-4" x-data="{ open: false }">
+            <div class="hidden text-right sm:block">
+              <p class="text-sm font-semibold text-slate-700">{{ user.get_full_name|default:user.username }}</p>
+              <p class="text-xs capitalize text-brand-600">{{ user.get_rol_display }}</p>
+            </div>
+            <button @click="open = !open"
+              class="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 font-bold text-white shadow-soft transition hover:shadow-lg">
+              {{ user.first_name|slice:":1"|upper|default:user.username|slice:":1"|upper }}
+            </button>
+            <div x-show="open" x-cloak @click.outside="open = false" x-transition
+              class="absolute right-4 top-16 w-48 rounded-xl border border-slate-100 bg-white py-2 shadow-xl lg:right-8">
+              <a href="{% url 'mi_cuenta' %}"
+                class="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                <i class="bi bi-person-circle"></i> Mi cuenta
+              </a>
+              <a href="{% url 'lista_notificaciones' %}"
+                class="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                <i class="bi bi-bell"></i> Notificaciones
+                {% if notificaciones_no_leidas_global %}<span
+                  class="ml-auto rounded-full bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-600">{{ notificaciones_no_leidas_global }}</span>{% endif %}
+              </a>
+              <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"><i
+                    class="bi bi-box-arrow-right"></i> Cerrar sesión</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="pagina-contenido flex-1 px-4 py-4 lg:px-6">
+        {% if messages %}
+<div class="mb-6 space-y-3">
+  {% for message in messages %}
+  <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition
+       class="flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm
+       {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300
+       {% elif message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300
+       {% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300
+       {% else %}border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-800 dark:bg-slate-800 dark:text-brand-300{% endif %}">
+    <i class="bi {% if message.tags == 'success' %}bi-check-circle-fill{% elif message.tags == 'error' %}bi-x-circle-fill{% elif message.tags == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} mt-0.5"></i>
+    <p class="flex-1 text-sm font-medium">{{ message }}</p>
+    <button @click="show=false" class="text-current opacity-60 hover:opacity-100"><i class="bi bi-x-lg"></i></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="px-4 py-6 text-center text-xs text-slate-400 lg:px-8">
+        ISBEN Solution &middot; Loja, Ecuador &middot; {% now "Y" %}
+      </footer>
+    </div>
+  </div>
+
+  {% else %}
+  {% block auth_content %}{% endblock %}
+  {% endif %}
+
+  <script>
+    document.addEventListener('submit', function (evento) {
+      var formulario = evento.target;
+      if (!(formulario instanceof HTMLFormElement) || formulario.dataset.sinCarga) return;
+      var boton = formulario.querySelector('button[type="submit"]');
+      if (!boton || boton.disabled) return;
+      boton.dataset.textoOriginal = boton.innerHTML;
+      boton.disabled = true;
+      boton.classList.add('opacity-70', 'cursor-not-allowed');
+      boton.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Procesando…';
+    });
+  </script>
+
+</body>
+
+</html>

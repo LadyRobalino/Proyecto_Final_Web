@@ -1,0 +1,40 @@
+{% extends "master.html" %}
+
+{% block title %}Mi cuenta{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Mi cuenta</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Actualiza tus datos personales y de perfil.</p>
+  </div>
+</div>
+
+<div class="mx-auto max-w-3xl space-y-6">
+  <form method="post">
+    {% csrf_token %}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+      <h2 class="mb-6 text-xl font-bold text-slate-800"><i class="bi bi-person-circle text-brand-500"></i> Datos personales</h2>
+      {% include 'core/partials/_form_campos.html' with form=usuario_form %}
+
+      {% if perfil_form %}
+      <h3 class="mb-4 mt-8 border-t border-slate-100 pt-6 text-sm font-bold uppercase tracking-wide text-slate-400">Datos de perfil ({{ user.get_rol_display }})</h3>
+      {% include 'core/partials/_form_campos.html' with form=perfil_form %}
+      {% endif %}
+
+      <div class="mt-6 flex justify-end border-t border-slate-100 pt-5">
+        <button type="submit" class="rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-6 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]"><i class="bi bi-check-lg"></i> Guardar cambios</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+    <h2 class="mb-2 text-lg font-bold text-slate-800"><i class="bi bi-shield-lock text-brand-500"></i> Contraseña</h2>
+    <p class="mb-4 text-sm text-slate-400">Por seguridad, el cambio de contraseña se hace en una pantalla aparte.</p>
+    <a href="{% url 'cambiar_password' %}" class="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100"><i class="bi bi-key"></i> Cambiar contraseña</a>
+  </div>
+</div>
+
+{% endblock %}

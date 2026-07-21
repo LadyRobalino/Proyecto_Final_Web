@@ -1,0 +1,45 @@
+{% extends "master.html" %}
+{% block title %}Elegir plan{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Contratar suscripción</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Elige el plan que mejor se ajuste a tu negocio.</p>
+  </div>
+</div>
+
+<div class="mx-auto max-w-4xl">
+  <a href="{% url 'lista_suscripciones' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver</a>
+
+  <form method="post" x-data="{ plan: 'mensual' }">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      {% for clave, datos in planes.items %}
+      <label class="relative flex cursor-pointer flex-col rounded-2xl border-2 p-6 transition"
+             :class="plan === '{{ clave }}' ? 'border-brand-500 bg-brand-50 shadow-soft' : 'border-slate-200 bg-white hover:border-brand-200'">
+        <input type="radio" name="plan" value="{{ clave }}" x-model="plan" class="sr-only">
+        {% if clave == 'anual' %}
+        <span class="absolute -top-3 right-4 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-900">Recomendado</span>
+        {% endif %}
+        <p class="text-sm font-semibold uppercase tracking-wide text-slate-400">{{ datos.nombre }}</p>
+        <p class="mt-2 text-3xl font-extrabold text-slate-800">${{ datos.precio }}</p>
+        <p class="text-xs text-slate-400">{% if clave == 'mensual' %}por mes{% elif clave == 'anual' %}por año{% else %}sin cuota fija{% endif %}</p>
+        <p class="mt-4 text-sm text-slate-500">{{ datos.descripcion }}</p>
+        <p class="mt-4 flex items-center gap-2 text-sm font-semibold text-brand-700"><i class="bi bi-percent"></i> {{ datos.comision }}% comisión de plataforma</p>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="mt-6 flex justify-end gap-3">
+      <a href="{% url 'lista_suscripciones' %}" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50">Cancelar</a>
+      <button type="submit" class="rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-6 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]">
+        <i class="bi bi-check-lg"></i> Contratar plan
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

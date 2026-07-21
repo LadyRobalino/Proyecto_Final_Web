@@ -1,0 +1,101 @@
+{% extends "master.html" %}
+{% block title %}{{ vendedor.usuario.get_full_name }}{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">{{ vendedor.usuario.get_full_name }}</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Perfil del vendedor independiente.</p>
+  </div>
+</div>
+
+<a href="{% url 'lista_vendedores' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><i class="bi bi-arrow-left"></i> Volver a vendedores</a>
+
+<div class="mx-auto max-w-2xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+  <div class="mb-6 flex items-center gap-4">
+    <div class="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-2xl font-bold text-white shadow-soft">
+      {{ vendedor.usuario.first_name|slice:":1"|upper }}
+    </div>
+    <div>
+      <h2 class="text-lg font-bold text-slate-800">{{ vendedor.usuario.get_full_name }}</h2>
+      <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ vendedor.estado_aprobacion }}</span>
+    </div>
+  </div>
+  <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+    <div><dt class="text-slate-400">Identidad</dt><dd class="font-medium text-slate-700">{{ vendedor.numero_identidad }}</dd></div>
+    <div><dt class="text-slate-400">Calificación</dt><dd class="font-medium text-slate-700"><i class="bi bi-star-fill text-amber-400"></i> {{ vendedor.calificacion_promedio|floatformat:1 }} · {{ vendedor.get_calificacion_label }}</dd></div>
+    <div><dt class="text-slate-400">Correo</dt><dd class="font-medium text-slate-700">{{ vendedor.usuario.email }}</dd></div>
+    <div><dt class="text-slate-400">Teléfono</dt><dd class="font-medium text-slate-700">{{ vendedor.usuario.telefono|default:"—" }}</dd></div>
+    {% if vendedor.estado_aprobacion == 'rechazado' and vendedor.motivo_rechazo %}
+    <div class="sm:col-span-2"><dt class="text-slate-400">Motivo de rechazo</dt><dd class="font-medium text-rose-600">{{ vendedor.motivo_rechazo }}</dd></div>
+    {% endif %}
+  </dl>
+
+  <div class="mt-6 border-t border-slate-100 pt-5">
+    <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-briefcase"></i> Experiencia laboral / ventas</h3>
+    <p class="text-sm text-slate-600 bg-slate-50 rounded-xl p-4">{{ vendedor.experiencia|default:"El vendedor aún no ha registrado detalles sobre su experiencia." }}</p>
+  </div>
+
+  {% if user.rol == 'empresa' and solicitud_de_mi_empresa.estado == 'pendiente' %}
+  <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4" x-data="{ rechazando: false }">
+    <p class="mb-3 text-sm font-semibold text-amber-800"><i class="bi bi-person-plus"></i> Este vendedor solicitó comercializar tus productos</p>
+    <div class="flex flex-wrap gap-2">
+      <form method="post" action="{% url 'responder_colaboracion' solicitud_de_mi_empresa.pk 'aceptar' %}">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"><i class="bi bi-check-circle"></i> Aceptar</button>
+      </form>
+      <button type="button" @click="rechazando = !rechazando" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Rechazar</button>
+    </div>
+    <form x-show="rechazando" x-cloak method="post" action="{% url 'responder_colaboracion' solicitud_de_mi_empresa.pk 'rechazar' %}" class="mt-3 space-y-2">
+      {% csrf_token %}
+      <textarea name="motivo" rows="2" required placeholder="Motivo del rechazo..." class="w-full rounded-xl border border-slate-200 p-2 text-sm"></textarea>
+      <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Confirmar rechazo</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="mt-6 border-t border-slate-100 pt-5" x-data="{ rechazando: false }">
+    <div class="flex flex-wrap gap-3">
+      {% if user.rol == 'empresa' and autorizado_por_mi %}
+      <form method="post" action="{% url 'autorizar_vendedor' vendedor.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Revocar autorización</button>
+      </form>
+      {% endif %}
+      {% if user.rol == 'administrador' %}
+      {% if vendedor.estado_aprobacion == 'pendiente' %}
+      <form method="post" action="{% url 'aprobar_vendedor' vendedor.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:bg-emerald-700"><i class="bi bi-patch-check"></i> Aprobar vendedor</button>
+      </form>
+      <button type="button" @click="rechazando = !rechazando" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Rechazar</button>
+      {% endif %}
+      {% if vendedor.estado_aprobacion == 'aprobado' %}
+      <form method="post" action="{% url 'suspender_vendedor' vendedor.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"><i class="bi bi-pause-circle"></i> Suspender</button>
+      </form>
+      {% endif %}
+      {% if vendedor.estado_aprobacion != 'bloqueado' %}
+      <form method="post" action="{% url 'bloquear_vendedor' vendedor.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-slash-circle"></i> Bloquear</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'editar_vendedor' vendedor.pk %}" class="flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100"><i class="bi bi-pencil"></i> Editar</a>
+      <a href="{% url 'eliminar_vendedor' vendedor.pk %}" class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-trash3"></i> Eliminar</a>
+      {% endif %}
+    </div>
+    {% if user.rol == 'administrador' %}
+    <form x-show="rechazando" x-cloak method="post" action="{% url 'rechazar_vendedor' vendedor.pk %}" class="mt-3 space-y-2">
+      {% csrf_token %}
+      <textarea name="motivo" rows="2" required placeholder="Motivo del rechazo..." class="w-full rounded-xl border border-slate-200 p-2 text-sm"></textarea>
+      <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Confirmar rechazo</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
