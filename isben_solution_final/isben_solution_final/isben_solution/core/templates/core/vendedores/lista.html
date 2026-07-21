@@ -1,0 +1,66 @@
+{% extends "master.html" %}
+{% block title %}Vendedores{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Vendedores</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Vendedores independientes registrados en la plataforma.</p>
+  </div>
+</div>
+
+{% if user.rol == 'administrador' %}
+<div class="mb-4">
+  <a href="{% url 'crear_vendedor' %}" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]">
+    <i class="bi bi-plus-lg"></i> Nuevo vendedor
+  </a>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for vendedor in vendedores %}
+  <a href="{% url 'detalle_vendedor' vendedor.pk %}" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+    <div class="mb-3 flex items-center gap-3">
+      <div class="grid h-11 w-11 place-items-center rounded-2xl bg-brand-50 text-lg text-brand-600"><i class="bi bi-person-badge"></i></div>
+      <div>
+        <p class="font-semibold text-slate-700">{{ vendedor.usuario.get_full_name }}</p>
+        <p class="text-xs text-slate-400">CI: {{ vendedor.numero_identidad }}</p>
+      </div>
+    </div>
+    {% if user.rol == 'empresa' %}
+    <div class="mb-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+      <div><span class="block font-semibold text-slate-700">{{ vendedor.ventas_realizadas }}</span> Ventas realizadas</div>
+      <div><span class="block font-semibold text-slate-700">{{ vendedor.clientes_atendidos }}</span> Clientes atendidos</div>
+      <div><span class="block font-semibold text-slate-700">${{ vendedor.comisiones_generadas }}</span> Comisiones gen.</div>
+      <div><span class="block font-semibold text-slate-700"><i class="bi bi-star-fill text-amber-400"></i> {{ vendedor.calificacion_empresa|floatformat:1 }}</span> Calificación</div>
+    </div>
+    {% endif %}
+    <div class="flex items-center justify-between">
+      <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ vendedor.estado_aprobacion }}</span>
+      <span class="flex items-center gap-1 text-xs font-semibold text-amber-500"><i class="bi bi-star-fill"></i> {{ vendedor.calificacion_promedio|floatformat:1 }}</span>
+    </div>
+  </a>
+  {% empty %}
+  <div class="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-slate-400">
+    <i class="bi bi-inbox mb-2 block text-3xl"></i> No hay vendedores registrados.
+  </div>
+  {% endfor %}
+</div>
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if vendedores.has_previous %}
+            <a href="?page={{ vendedores.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if vendedores.has_next %}
+            <a href="?page={{ vendedores.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

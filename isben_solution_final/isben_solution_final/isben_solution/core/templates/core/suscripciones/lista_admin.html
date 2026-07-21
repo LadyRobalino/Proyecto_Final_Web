@@ -1,0 +1,79 @@
+{% extends "master.html" %}
+{% block title %}Supervisión de Suscripciones{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Suscripciones de la Plataforma</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Monitoreo general de los planes contratados por empresas y vendedores de la plataforma.</p>
+  </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-5 py-3">Cliente / Entidad</th>
+          <th class="px-5 py-3">Tipo</th>
+          <th class="px-5 py-3">Plan contratado</th>
+          <th class="px-5 py-3">Precio</th>
+          <th class="px-5 py-3">Comisión plataforma</th>
+          <th class="px-5 py-3">Fecha Inicio</th>
+          <th class="px-5 py-3">Fecha Fin</th>
+          <th class="px-5 py-3">Estado</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for suscripcion in suscripciones %}
+        <tr class="transition hover:bg-brand-50/40">
+          <td class="px-5 py-3 font-semibold text-slate-700">
+            {% if suscripcion.empresa %}
+              <span class="flex items-center gap-1.5"><i class="bi bi-building text-slate-400"></i> {{ suscripcion.empresa.razon_social }}</span>
+            {% else %}
+              <span class="flex items-center gap-1.5"><i class="bi bi-person-badge text-slate-400"></i> {{ suscripcion.vendedor.usuario.get_full_name }}</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-xs font-semibold uppercase text-slate-500">
+            {% if suscripcion.plan.tipo == 'empresa' %}Empresa{% else %}Vendedor{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-600">{{ suscripcion.plan.nombre|default:"—" }}</td>
+          <td class="px-5 py-3 font-mono text-xs font-semibold text-slate-600">${{ suscripcion.plan.precio|default:"0.00" }}</td>
+          <td class="px-5 py-3 text-slate-500">
+            {% if suscripcion.plan.tipo == 'empresa' %}{{ suscripcion.plan.comision_plataforma|default:"5.0" }}%{% else %}—{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-400">{{ suscripcion.fecha_inicio|date:"d/m/Y" }}</td>
+          <td class="px-5 py-3 text-slate-400">{{ suscripcion.fecha_fin|date:"d/m/Y"|default:"—" }}</td>
+          <td class="px-5 py-3"><span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ suscripcion.estado }}</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-5 py-10 text-center text-slate-400">
+            <i class="bi bi-inbox mb-2 block text-3xl"></i>
+            No hay registros de suscripción.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if suscripciones.has_previous %}
+            <a href="?page={{ suscripciones.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if suscripciones.has_next %}
+            <a href="?page={{ suscripciones.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

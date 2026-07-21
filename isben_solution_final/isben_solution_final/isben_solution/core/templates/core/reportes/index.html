@@ -1,0 +1,150 @@
+{% extends "master.html" %}
+{% block title %}Reportes{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Reportes de la plataforma</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Visión global de ventas, empresas, vendedores y productos.</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ventas totales</p>
+    <p class="mt-1 text-2xl font-bold text-slate-800">${{ ventas_totales }}</p>
+  </div>
+  <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Pedidos totales</p>
+    <p class="mt-1 text-2xl font-bold text-slate-800">{{ total_pedidos }}</p>
+  </div>
+  <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Comisiones pagadas</p>
+    <p class="mt-1 text-2xl font-bold text-slate-800">${{ total_comisiones_pagadas }}</p>
+  </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-building"></i> Empresas más activas</h3>
+    {% if empresas_mas_activas %}
+    <ul class="space-y-3">
+      {% for empresa in empresas_mas_activas %}
+      <li class="flex items-center justify-between text-sm">
+        <a href="{% url 'detalle_empresa' empresa.pk %}" class="font-medium text-slate-700 hover:text-brand-600">{{ empresa.razon_social }}</a>
+        <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{{ empresa.total_pedidos }} pedido(s)</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">Aún no hay pedidos registrados.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-person-badge"></i> Vendedores con más comisiones</h3>
+    {% if vendedores_top_comisiones %}
+    <ul class="space-y-3">
+      {% for vendedor in vendedores_top_comisiones %}
+      <li class="flex items-center justify-between text-sm">
+        <a href="{% url 'detalle_vendedor' vendedor.pk %}" class="font-medium text-slate-700 hover:text-brand-600">{{ vendedor.usuario.get_full_name }}</a>
+        <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">${{ vendedor.total_comisiones }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">Aún no hay comisiones pagadas.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-box-seam"></i> Productos más vendidos</h3>
+    {% if productos_mas_vendidos %}
+    <ul class="space-y-3">
+      {% for producto in productos_mas_vendidos %}
+      <li class="flex items-center justify-between text-sm">
+        <a href="{% url 'detalle_producto' producto.pk %}" class="font-medium text-slate-700 hover:text-brand-600">{{ producto.nombre }}</a>
+        <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{{ producto.unidades_vendidas }} u.</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">Aún no hay ventas registradas.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-slate-400">
+      <span><i class="bi bi-exclamation-triangle text-amber-500"></i> Stock bajo (todas las empresas)</span>
+      <a href="{% url 'lista_inventario' %}" class="text-xs font-semibold normal-case text-brand-600 hover:text-brand-700">Ver inventario</a>
+    </h3>
+    {% if stock_bajo_global %}
+    <ul class="space-y-2">
+      {% for inv in stock_bajo_global %}
+      <li class="flex items-center justify-between rounded-lg border border-rose-100 bg-rose-50/40 px-3 py-2 text-sm">
+        <span class="font-medium text-slate-700">{{ inv.producto.nombre }} <span class="text-xs text-slate-400">({{ inv.producto.empresa.razon_social }})</span></span>
+        <span class="font-bold text-rose-600">{{ inv.stock_actual }} u.</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">No hay productos con stock bajo.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-slate-400">
+      <span><i class="bi bi-credit-card text-amber-500"></i> Pagos pendientes de validar</span>
+    </h3>
+    {% if pagos_pendientes %}
+    <ul class="space-y-2">
+      {% for pago in pagos_pendientes %}
+      <li><a href="{% url 'detalle_pago' pago.pk %}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:border-brand-200">
+        <span class="font-medium text-slate-700">{{ pago.pedido.comprador.usuario.get_full_name }}</span>
+        <span class="font-semibold text-slate-700">${{ pago.monto }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">No hay pagos pendientes de validar.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-slate-400">
+      <span><i class="bi bi-x-circle text-rose-500"></i> Pedidos cancelados</span>
+      <span class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 normal-case">{{ total_pedidos_cancelados }} total</span>
+    </h3>
+    {% if pedidos_cancelados %}
+    <ul class="space-y-2">
+      {% for pedido in pedidos_cancelados %}
+      <li><a href="{% url 'detalle_pedido' pedido.pk %}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:border-brand-200">
+        <span class="font-mono text-xs text-slate-500">{{ pedido.numero_pedido }}</span>
+        <span class="font-semibold text-slate-700">${{ pedido.total }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">No hay pedidos cancelados.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-moon text-slate-400"></i> Empresas inactivas (sin ventas en 30 días)</h3>
+    {% if empresas_inactivas %}
+    <ul class="space-y-2">
+      {% for empresa in empresas_inactivas %}
+      <li><a href="{% url 'detalle_empresa' empresa.pk %}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:border-brand-200"><span class="font-medium text-slate-700">{{ empresa.razon_social }}</span><i class="bi bi-arrow-right text-slate-300"></i></a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-400">Todas las empresas registran ventas recientes.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

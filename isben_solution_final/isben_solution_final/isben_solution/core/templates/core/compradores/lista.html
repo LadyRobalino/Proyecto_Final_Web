@@ -1,0 +1,85 @@
+{% extends "master.html" %}
+{% block title %}Compradores{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Compradores</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Compradores mayoristas registrados en la plataforma.</p>
+  </div>
+</div>
+
+<form method="get" class="mb-4 flex flex-wrap gap-2">
+  <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar comprador…" class="rounded-xl border border-slate-300 px-4 py-2 text-sm">
+  <select name="nivel" class="rounded-xl border border-slate-300 px-4 py-2 text-sm">
+    <option value="">Todos los niveles</option>
+    {% for valor, etiqueta in niveles %}
+    <option value="{{ valor }}" {% if request.GET.nivel == valor %}selected{% endif %}>{{ etiqueta }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">Filtrar</button>
+</form>
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-5 py-3">Comprador</th>
+          <th class="px-5 py-3">Negocio</th>
+          <th class="px-5 py-3">RUC</th>
+          <th class="px-5 py-3">Crédito</th>
+          <th class="px-5 py-3">Nivel</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for comprador in compradores %}
+        <tr class="transition hover:bg-brand-50/40">
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-3">
+              <div class="grid h-9 w-9 place-items-center rounded-xl bg-brand-100 text-brand-600"><i class="bi bi-person-check"></i></div>
+              <p class="font-semibold text-slate-700">{{ comprador.usuario.get_full_name }}</p>
+            </div>
+          </td>
+          <td class="px-5 py-3 text-slate-500">{{ comprador.tipo_negocio }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ comprador.ruc|default:"—" }}</td>
+          <td class="px-5 py-3 text-slate-500">${{ comprador.limite_credito }}</td>
+          <td class="px-5 py-3"><span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{{ comprador.get_nivel_display }}</span> <span class="text-xs text-slate-400">({{ comprador.puntos }} pts.)</span></td>
+          <td class="px-5 py-3">
+            <div class="flex justify-end gap-2">
+              <a href="{% url 'detalle_comprador' comprador.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600" title="Ver detalle"><i class="bi bi-eye"></i></a>
+              {% if user.rol == 'vendedor' %}
+              <form method="post" action="{% url 'desvincular_comprador' comprador.pk %}" onsubmit="return confirm('¿Deseas desvincular a {{ comprador.usuario.get_full_name }} de tu cartera? Esta acción no elimina su cuenta.')">
+                {% csrf_token %}
+                <button type="submit" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Desvincular cliente"><i class="bi bi-person-dash"></i></button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="px-5 py-10 text-center text-slate-400"><i class="bi bi-inbox mb-2 block text-3xl"></i> No hay compradores registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if compradores.has_previous %}
+            <a href="?page={{ compradores.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if compradores.has_next %}
+            <a href="?page={{ compradores.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

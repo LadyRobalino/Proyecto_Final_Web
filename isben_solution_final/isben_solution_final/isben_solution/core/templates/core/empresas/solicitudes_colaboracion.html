@@ -1,0 +1,95 @@
+{% extends "master.html" %}
+{% block title %}Postulaciones de Vendedores{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Postulaciones de Vendedores</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Revisa las solicitudes de colaboración de vendedores independientes.</p>
+  </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-5 py-3">Vendedor</th>
+          <th class="px-5 py-3">Identidad</th>
+          <th class="px-5 py-3">Experiencia</th>
+          <th class="px-5 py-3">Reputación</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100" x-data="{ rechazandoId: null }">
+        {% for solicitud in solicitudes %}
+        <tr class="transition hover:bg-brand-50/40">
+          <td class="px-5 py-3">
+            <a href="{% url 'detalle_vendedor' solicitud.vendedor.pk %}" class="font-semibold text-brand-600 hover:underline">
+              {{ solicitud.vendedor.usuario.get_full_name }}
+            </a>
+            <p class="text-xs text-slate-400">{{ solicitud.vendedor.usuario.email }}</p>
+          </td>
+          <td class="px-5 py-3 text-slate-500">{{ solicitud.vendedor.numero_identidad }}</td>
+          <td class="px-5 py-3 text-slate-600">
+            <div class="max-w-xs truncate" title="{{ solicitud.vendedor.experiencia }}">
+              {{ solicitud.vendedor.experiencia|default:"Sin experiencia registrada" }}
+            </div>
+          </td>
+          <td class="px-5 py-3 font-semibold text-slate-700">
+            <i class="bi bi-star-fill text-amber-400"></i> {{ solicitud.vendedor.calificacion_promedio|floatformat:1 }}
+          </td>
+          <td class="px-5 py-3 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <form method="post" action="{% url 'responder_colaboracion' solicitud.pk 'aceptar' %}">
+                {% csrf_token %}
+                <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700" title="Aceptar solicitud">
+                  <i class="bi bi-check2"></i> Aceptar
+                </button>
+              </form>
+              <button type="button" @click="rechazandoId = (rechazandoId === {{ solicitud.pk }} ? null : {{ solicitud.pk }})" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
+                <i class="bi bi-x-lg"></i> Rechazar
+              </button>
+            </div>
+
+            <!-- Formulario de Rechazo con Motivo -->
+            <div x-show="rechazandoId === {{ solicitud.pk }}" x-cloak class="mt-2 text-left">
+              <form method="post" action="{% url 'responder_colaboracion' solicitud.pk 'rechazar' %}" class="space-y-2">
+                {% csrf_token %}
+                <textarea name="motivo" rows="2" required placeholder="Escribe el motivo del rechazo..." class="w-full rounded-lg border border-slate-200 p-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"></textarea>
+                <button type="submit" class="rounded-lg bg-rose-700 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-800">
+                  Confirmar rechazo
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-5 py-10 text-center text-slate-400">
+            <i class="bi bi-inbox mb-2 block text-3xl"></i> No tienes postulaciones de vendedores pendientes.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if solicitudes.has_previous %}
+            <a href="?page={{ solicitudes.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if solicitudes.has_next %}
+            <a href="?page={{ solicitudes.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

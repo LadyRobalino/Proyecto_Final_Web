@@ -1,0 +1,122 @@
+{% extends "master.html" %}
+{% block title %}Inventario{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Inventario</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Controla el stock disponible de cada producto en tiempo real.</p>
+  </div>
+</div>
+
+{% if user.rol == 'empresa' %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <a href="{% url 'crear_inventario' %}" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]">
+    <i class="bi bi-plus-lg"></i> Registrar inventario
+  </a>
+  <div class="flex items-center gap-2">
+    <a href="?{% if stock_bajo_filtrado %}{% else %}stock_bajo=true{% endif %}" class="inline-flex items-center gap-2 rounded-xl border {% if stock_bajo_filtrado %}border-rose-200 bg-rose-50 text-rose-700{% else %}border-slate-200 bg-white text-slate-700 hover:bg-slate-50{% endif %} px-4 py-2 text-xs font-semibold shadow-sm transition">
+      <i class="bi bi-exclamation-triangle"></i> Mostrar solo próximos a agotarse
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-5 py-3">Producto</th>
+          <th class="px-5 py-3">Stock actual</th>
+          <th class="px-5 py-3">Stock reservado</th>
+          <th class="px-5 py-3">Mín. / Máx.</th>
+          <th class="px-5 py-3">Ubicación</th>
+          <th class="px-5 py-3">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for inventario in inventarios %}
+        <tr class="transition hover:bg-brand-50/40">
+          <td class="px-5 py-3">
+            <p class="font-semibold text-slate-700">{{ inventario.producto.nombre }}</p>
+            <p class="text-xs text-slate-400">{{ inventario.producto.empresa.razon_social }}</p>
+          </td>
+          <td class="px-5 py-3 text-slate-700">
+            {% if user.rol == 'empresa' %}
+            <div class="flex items-center gap-2">
+              <form method="post" action="{% url 'actualizar_stock_rapido' inventario.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="disminuir">
+                <button type="submit" class="grid h-7 w-7 place-items-center rounded bg-slate-100 hover:bg-rose-100 hover:text-rose-600 text-sm font-semibold transition">-</button>
+              </form>
+              
+              <form method="post" action="{% url 'actualizar_stock_rapido' inventario.pk %}" class="flex items-center gap-1">
+                {% csrf_token %}
+                <input type="number" name="cantidad" value="{{ inventario.stock_actual }}" min="0" class="w-16 rounded border border-slate-200 px-2 py-0.5 text-center text-xs focus:ring-1 focus:ring-brand-500 focus:outline-none">
+                <button type="submit" class="grid h-7 w-7 place-items-center rounded bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 text-sm font-semibold transition" title="Guardar">
+                  <i class="bi bi-save"></i>
+                </button>
+              </form>
+              
+              <form method="post" action="{% url 'actualizar_stock_rapido' inventario.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="aumentar">
+                <button type="submit" class="grid h-7 w-7 place-items-center rounded bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 text-sm font-semibold transition">+</button>
+              </form>
+            </div>
+            {% else %}
+            <span class="font-bold">{{ inventario.stock_actual }}</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3">
+            {% if inventario.stock_reservado > 0 %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700"><i class="bi bi-lock"></i> {{ inventario.stock_reservado }}</span>
+            {% else %}
+            <span class="text-slate-400 text-xs">0</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-500">{{ inventario.stock_minimo }} / {{ inventario.stock_maximo }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ inventario.ubicacion|default:"—" }}</td>
+          <td class="px-5 py-3">
+            {% if inventario.stock_bajo %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700"><i class="bi bi-exclamation-triangle-fill"></i> {{ inventario.get_estado_stock }}</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><i class="bi bi-check-circle-fill"></i> {{ inventario.get_estado_stock }}</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3">
+            {% if user.rol == 'empresa' %}
+            <div class="flex justify-end gap-2">
+              <a href="{% url 'editar_inventario' inventario.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'eliminar_inventario' inventario.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"><i class="bi bi-trash3"></i></a>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="px-5 py-10 text-center text-slate-400"><i class="bi bi-inbox mb-2 block text-3xl"></i> No hay registros de inventario.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if inventarios.has_previous %}
+            <a href="?page={{ inventarios.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if inventarios.has_next %}
+            <a href="?page={{ inventarios.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

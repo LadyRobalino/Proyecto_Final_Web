@@ -1,0 +1,92 @@
+{% extends "master.html" %}
+{% block title %}Empresas{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Empresas</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Directorio de empresas distribuidoras registradas en la plataforma.</p>
+  </div>
+</div>
+
+
+<div class="mb-6 flex items-center justify-between">
+    <h2 class="text-xl font-bold text-slate-800">Empresas registradas</h2>
+</div>
+
+{% if user.rol == 'administrador' %}
+<div class="mb-4">
+  <a href="{% url 'crear_empresa' %}" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]">
+    <i class="bi bi-plus-lg"></i> Nueva empresa
+  </a>
+</div>
+{% endif %}
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-5 py-3">Empresa</th>
+          <th class="px-5 py-3">RUC</th>
+          <th class="px-5 py-3">Representante</th>
+          <th class="px-5 py-3">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for empresa in empresas %}
+        <tr class="transition hover:bg-brand-50/40">
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-3">
+              <div class="grid h-9 w-9 place-items-center rounded-xl bg-brand-100 text-brand-600"><i class="bi bi-building"></i></div>
+              <div>
+                <p class="font-semibold text-slate-700">{{ empresa.razon_social }}</p>
+                <p class="text-xs text-slate-400">{{ empresa.usuario.email }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3 text-slate-500">{{ empresa.ruc }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ empresa.representante_legal }}</td>
+          <td class="px-5 py-3">
+            <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ empresa.estado }}</span>
+          </td>
+          <td class="px-5 py-3">
+            <div class="flex justify-end gap-2">
+              <a href="{% url 'detalle_empresa' empresa.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-brand-600" title="Ver"><i class="bi bi-eye"></i></a>
+              {% if user.rol == 'administrador' or user.empresa.pk == empresa.pk %}
+              <a href="{% url 'editar_empresa' empresa.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600" title="Editar"><i class="bi bi-pencil"></i></a>
+              {% endif %}
+              {% if user.rol == 'administrador' %}
+              <a href="{% url 'eliminar_empresa' empresa.pk %}" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Eliminar"><i class="bi bi-trash3"></i></a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-5 py-10 text-center text-slate-400">
+          <i class="bi bi-inbox mb-2 block text-3xl"></i> No existen empresas registradas.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+    <span class="text-sm text-slate-500">
+
+    </span>
+    <span class="flex gap-2">
+        {% if empresas.has_previous %}
+            <a href="?page={{ empresas.previous_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Anterior</a>
+        {% endif %}
+        {% if empresas.has_next %}
+            <a href="?page={{ empresas.next_page_number }}" class="rounded-lg border border-slate-200 px-3 py-1 text-sm hover:bg-slate-50">Siguiente</a>
+        {% endif %}
+    </span>
+</div>
+
+{% endblock %}

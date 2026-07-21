@@ -1,0 +1,207 @@
+{% extends "master.html" %}
+{% block title %}Pedido {{ pedido.numero_pedido }}{% endblock %}
+
+
+
+{% block content %}
+<div class="mb-6 flex flex-col justify-between sm:flex-row sm:items-center">
+  <div>
+    <h1 class="text-lg font-bold text-slate-800 lg:text-xl">Pedido {{ pedido.numero_pedido }}</h1>
+    <p class="hidden text-xs text-slate-400 sm:block">Creado el {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+  </div>
+</div>
+
+<a href="{% url 'lista_pedidos' %}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600 no-imprimir"><i class="bi bi-arrow-left"></i> Volver a pedidos</a>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <div class="mb-5">
+        <!-- Seguimiento pedido -->
+      </div>
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800"><i class="bi bi-cart-check text-brand-500"></i> Productos</h2>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ pedido.estado }}</span>
+      </div>
+      {% if pedido.direccion_entrega and user.rol != 'administrador' %}
+      <p class="mb-3 text-xs text-slate-400"><i class="bi bi-geo-alt"></i> Entrega en: {{ pedido.direccion_entrega }}</p>
+      {% endif %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-xs uppercase text-slate-400">
+            <tr>
+              <th class="py-2">Producto</th>
+              <th class="py-2">Cant.</th>
+              {% if user.rol != 'administrador' %}
+              <th class="py-2">P. unit.</th>
+              <th class="py-2">Desc.</th>
+              <th class="py-2 text-right">Subtotal</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for detalle in pedido.detalles.all %}
+            <tr>
+              <td class="py-2 font-medium text-slate-700">{{ detalle.producto.nombre }}</td>
+              <td class="py-2 text-slate-500">{{ detalle.cantidad }}</td>
+              {% if user.rol != 'administrador' %}
+              <td class="py-2 text-slate-500">${{ detalle.precio_unitario }}</td>
+              <td class="py-2 text-slate-500">${{ detalle.descuento }}</td>
+              <td class="py-2 text-right font-semibold text-slate-700">${{ detalle.subtotal }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if user.rol != 'administrador' %}
+          <tfoot class="border-t border-slate-200 text-xs text-slate-500">
+            <tr>
+              <td colspan="4" class="py-1.5 text-right font-semibold">Subtotal</td>
+              <td class="py-1.5 text-right font-semibold text-slate-700">${{ pedido.subtotal }}</td>
+            </tr>
+            {% if pedido.descuento %}
+            <tr>
+              <td colspan="4" class="py-1 text-right font-semibold text-rose-500">Descuento</td>
+              <td class="py-1 text-right font-semibold text-rose-600">-${{ pedido.descuento }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <td colspan="4" class="py-1 text-right font-semibold">IVA (15%)</td>
+              <td class="py-1 text-right font-semibold text-slate-700">${{ pedido.iva }}</td>
+            </tr>
+            <tr class="text-sm font-bold border-t border-slate-100">
+              <td colspan="4" class="py-3 text-right text-slate-800">Total</td>
+              <td class="py-3 text-right text-base text-brand-700">${{ pedido.total }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+
+      {% if pedido.estado == 'rechazado' and pedido.motivo_rechazo %}
+      <div class="mt-4 rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-sm text-rose-700">
+        <i class="bi bi-info-circle"></i> Motivo de rechazo: {{ pedido.motivo_rechazo }}
+      </div>
+      {% endif %}
+
+      {% if user.rol == 'empresa' %}
+      <div class="mt-5 border-t border-slate-100 pt-4 no-imprimir" x-data="{ rechazando: false }">
+        <div class="flex flex-wrap gap-2">
+          {% if pedido.estado == 'pendiente' %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'aceptado' %}">{% csrf_token %}<button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"><i class="bi bi-check2"></i> Aceptar pedido</button></form>
+          <button type="button" @click="rechazando = !rechazando" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Rechazar</button>
+          {% endif %}
+          {% if pedido.estado == 'aceptado' %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'preparando' %}">{% csrf_token %}<button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"><i class="bi bi-box-seam"></i> Empezar preparación</button></form>
+          {% endif %}
+          {% if pedido.estado == 'preparando' %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'despachado' %}">{% csrf_token %}<button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"><i class="bi bi-truck"></i> Despachar</button></form>
+          {% endif %}
+          {% if pedido.estado == 'despachado' %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'en_camino' %}">{% csrf_token %}<button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"><i class="bi bi-truck-flatbed"></i> Marcar En camino</button></form>
+          {% endif %}
+          {% if pedido.estado == 'en_camino' %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'entregado' %}">{% csrf_token %}<button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"><i class="bi bi-check2"></i> Marcar entregado</button></form>
+          {% endif %}
+          {% if pedido.puede_cancelarse %}
+          <form method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'cancelado' %}">{% csrf_token %}<button class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"><i class="bi bi-x-circle"></i> Cancelar pedido</button></form>
+          {% endif %}
+        </div>
+        <form x-show="rechazando" x-cloak method="post" action="{% url 'cambiar_estado_pedido' pedido.pk 'rechazado' %}" class="mt-3 space-y-2">
+          {% csrf_token %}
+          <textarea name="motivo" rows="2" required placeholder="Motivo del rechazo (ej. sin stock disponible)..." class="w-full rounded-xl border border-slate-200 p-2 text-sm"></textarea>
+          <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">Confirmar rechazo</button>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if user.rol == 'comprador' %}
+      <div class="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 no-imprimir">
+        {% if pedido.estado == 'entregado' %}
+          {% if not calificacion_empresa %}
+          <a href="{% url 'crear_calificacion' %}?pedido={{ pedido.pk }}&tipo=empresa" class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"><i class="bi bi-star"></i> Calificar empresa</a>
+          {% endif %}
+          {% if pedido.vendedor and not calificacion_vendedor %}
+          <a href="{% url 'crear_calificacion' %}?pedido={{ pedido.pk }}&tipo=vendedor" class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100"><i class="bi bi-star"></i> Calificar vendedor</a>
+          {% endif %}
+        {% endif %}
+        {% if pedido.estado != 'rechazado' %}
+        <form method="post" action="{% url 'repetir_pedido' pedido.pk %}">{% csrf_token %}<button type="submit" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"><i class="bi bi-arrow-repeat"></i> Repetir pedido</button></form>
+        {% endif %}
+        {% if pedido.estado == 'entregado' %}
+        <button type="button" onclick="window.print()" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"><i class="bi bi-printer"></i> Descargar comprobante</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if user.rol != 'administrador' %}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-credit-card"></i> Pagos</h3>
+        {% if user.rol == 'comprador' %}
+        <a href="{% url 'crear_pago' %}" class="text-xs font-semibold text-brand-600 hover:text-brand-700"><i class="bi bi-plus-lg"></i> Registrar pago</a>
+        {% endif %}
+      </div>
+      {% for pago in pedido.pagos.all %}
+      <div class="mb-2 flex items-center justify-between rounded-xl border border-slate-100 px-4 py-2 text-sm">
+        <span>${{ pago.monto }} · {{ pago.get_tipo_display }} · {{ pago.metodo_pago }}</span>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ pago.estado }}</span>
+          {% if user.rol == 'empresa' and pago.estado == 'pendiente' %}
+          <form method="post" action="{% url 'validar_pago' pago.pk %}"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><button class="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700">Validar</button></form>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-sm text-slate-400">Aún no se han registrado pagos para este pedido.</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6">
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-people"></i> Participantes</h3>
+      <dl class="space-y-3 text-sm">
+        {% if user.rol != 'administrador' %}
+        <div><dt class="text-slate-400">Comprador</dt><dd class="font-medium text-slate-700">{{ pedido.comprador.usuario.get_full_name }}</dd></div>
+        {% endif %}
+        <div><dt class="text-slate-400">Empresa</dt><dd class="font-medium text-slate-700">{{ pedido.empresa.razon_social }}</dd></div>
+        {% if user.rol != 'administrador' %}
+        <div><dt class="text-slate-400">Vendedor</dt><dd class="font-medium text-slate-700">{{ pedido.vendedor.usuario.get_full_name|default:"Venta directa" }}</dd></div>
+        {% endif %}
+      </dl>
+    </div>
+
+    {% if user.rol != 'administrador' %}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-receipt"></i> Factura</h3>
+      {% if factura %}
+      <p class="text-sm font-semibold text-slate-700">{{ factura.numero_factura }}</p>
+      <p class="text-xs text-slate-400">Total: ${{ factura.total }} (IVA ${{ factura.iva }})</p>
+      <div class="mt-2"><span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ factura.estado_sri }}</span></div>
+      {% if user.rol != 'comprador' or pedido.estado == 'entregado' %}
+      <a href="{% url 'detalle_factura' factura.pk %}" class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700">Ver factura <i class="bi bi-arrow-right"></i></a>
+      {% else %}
+      <p class="text-xs text-amber-600 mt-2"><i class="bi bi-lock-fill"></i> La factura estará visible cuando el pedido sea entregado.</p>
+      {% endif %}
+      {% else %}
+      <p class="text-sm text-slate-400">Se generará automáticamente al validar el pago.</p>
+      {% endif %}
+    </div>
+
+    {% if pedido.comisiones.exists %}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+      <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-400"><i class="bi bi-percent"></i> Comisión</h3>
+      {% for comision in pedido.comisiones.all %}
+      <p class="text-sm text-slate-700">${{ comision.monto_comision }} ({{ comision.porcentaje }}%)</p>
+      <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">{{ comision.estado }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
