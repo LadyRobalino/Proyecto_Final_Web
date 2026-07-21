@@ -34,9 +34,10 @@ python manage.py migrate
 ```
 
 **5. Cargar los datos iniciales**
-El proyecto incluye datos base (como usuarios o registros de prueba) en el archivo `datos_iniciales.json`. Para cargarlos, ejecuta:
+El proyecto incluye datos base (como usuarios o registros de prueba) en el archivo `datos_iniciales.json`. Para cargarlos en tu base de datos local y evitar tener la plataforma vacía ejecuta:
+
 ```bash
-python manage.py loaddata datos_iniciales.json
+python manage.py dumpdata -o datos_iniciales.json
 ```
 
 **6. Levantar el servidor**
