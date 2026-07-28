@@ -37,7 +37,7 @@ python manage.py migrate
 El proyecto incluye datos base (como usuarios o registros de prueba) en el archivo `datos_iniciales.json`. Para cargarlos en tu base de datos local y evitar tener la plataforma vacía ejecuta:
 
 ```bash
-python manage.py dumpdata -o datos_iniciales.json
+python manage.py loaddata datos_iniciales.json
 ```
 
 **6. Levantar el servidor**
@@ -49,3 +49,22 @@ python manage.py runserver
 **7. Acceder a la aplicación**
 Abre tu navegador web con la siguiente dirección:
 http://127.0.0.1:8000
+
+
+**8. credenciales de usuarios**
+
+ROL admin
+yasmin123
+yasmin1234
+
+ROL empresa
+joel123
+joel1234
+
+ROL vendedor
+omar123
+omar1234
+
+ROL comprador
+sebas123
+sebas1234
