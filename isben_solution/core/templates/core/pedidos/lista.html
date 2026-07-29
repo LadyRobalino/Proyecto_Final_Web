@@ -18,7 +18,7 @@
     <a href="?estado={{ valor }}" class="rounded-full px-3 py-1.5 text-xs font-semibold {% if request.GET.estado == valor %}bg-brand-600 text-white{% else %}bg-white text-slate-500 border border-slate-200{% endif %}">{{ etiqueta }}</a>
     {% endfor %}
   </div>
-  {% if user.rol == 'comprador' or user.rol == 'vendedor' and user.vendedor.esta_aprobado and user.vendedor.empresas_aprobadoras.exists %}
+  {% if user.rol == 'vendedor' and user.vendedor.esta_aprobado and user.vendedor.empresas_aprobadoras.exists %}
   <a href="{% url 'crear_pedido' %}" class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#FFC22F] to-[#FB4318] px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98] hover:from-[#ffb300] hover:to-[#e23310]">
     <i class="bi bi-plus-lg"></i> Nuevo pedido
   </a>

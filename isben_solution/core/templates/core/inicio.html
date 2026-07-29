@@ -567,6 +567,15 @@
       {% else %}
       <p class="mt-2 text-xs text-orange-300">¡Alcanzaste el nivel máximo!</p>
       {% endif %}
+
+      <div class="mt-6 flex flex-col gap-2">
+        <a href="{% url 'lista_productos' %}" class="w-full text-center rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition shadow-sm">
+          <i class="bi bi-shop me-1"></i> Explorar Catálogo
+        </a>
+        <a href="{% url 'ver_carrito' %}" class="w-full text-center rounded-xl border border-orange-400/30 bg-transparent hover:bg-white/10 px-4 py-2 text-sm font-semibold text-orange-100 transition shadow-sm">
+          <i class="bi bi-cart3 me-1"></i> Ir a mi Carrito
+        </a>
+      </div>
     </div>
 
     <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">

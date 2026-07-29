@@ -1056,7 +1056,7 @@ def _crear_pedido_desde_detalles(comprador, empresa, vendedor, detalles, direcci
     return nuevo_pedido
 
 
-@rol_requerido('comprador', 'vendedor')
+@rol_requerido('vendedor')
 def crear_pedido(request):
     if request.user.rol == 'vendedor':
         vendedor_actual = request.user.vendedor
