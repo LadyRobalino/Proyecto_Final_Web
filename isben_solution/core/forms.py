@@ -463,10 +463,15 @@ class PagoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         aplicar_estilos_tailwind(self)
+        if 'pedido' in self.fields:
+            self.fields['pedido'].label_from_instance = lambda obj: f"Pedido {obj.numero_pedido} - Total: ${obj.total}"
 
     class Meta:
         model = Pago
-        fields = ['pedido', 'monto', 'tipo', 'metodo_pago', 'referencia_pago']
+        fields = ['pedido', 'monto', 'metodo_pago', 'referencia_pago', 'comprobante']
+        widgets = {
+            'monto': forms.NumberInput(attrs={'readonly': 'readonly'}),
+        }
 
 
 class FacturaForm(forms.ModelForm):

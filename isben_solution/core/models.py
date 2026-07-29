@@ -1,7 +1,9 @@
 from decimal import Decimal
 
 from django.db import models
+from django.db.models import Sum, Count, Q
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 
 # =============================================================================
@@ -545,6 +547,18 @@ class Suscripcion(models.Model):
         """Verifica si la suscripción está activa."""
         return self.estado == 'activa'
 
+    def cancelar(self):
+        self.estado = 'cancelada'
+        self.fecha_fin = timezone.now().date()
+        self.save()
+
+    @classmethod
+    def obtener_para_cancelar(cls, usuario, pk_suscripcion):
+        if usuario.rol == 'empresa':
+            return cls.objects.get(pk=pk_suscripcion, empresa=usuario.empresa)
+        else:
+            return cls.objects.get(pk=pk_suscripcion, vendedor=usuario.vendedor)
+
     def get_costo_mensual(self):
         """
         Retorna el costo mensual equivalente.
@@ -584,6 +598,31 @@ class Comision(models.Model):
     def esta_pagada(self):
         """Verifica si la comisión ya fue pagada al vendedor."""
         return self.estado == 'pagada'
+
+    @classmethod
+    def obtener_comisiones_y_resumen(cls, usuario, estado=None, orden='-fecha_generacion'):
+        comisiones = cls.objects.select_related(
+            'vendedor__usuario', 'pedido__empresa'
+        ).order_by('-fecha_generacion')
+
+        if usuario.rol == 'vendedor':
+            comisiones = comisiones.filter(vendedor=usuario.vendedor)
+        elif usuario.rol == 'empresa':
+            comisiones = comisiones.filter(pedido__empresa=usuario.empresa)
+
+        resumen = comisiones.aggregate(
+            pendiente=Sum('monto_comision', filter=Q(estado='pendiente')),
+            pagada=Sum('monto_comision', filter=Q(estado='pagada')),
+            anuladas=Count('id', filter=Q(estado='anulada')),
+        )
+
+        if estado:
+            comisiones = comisiones.filter(estado=estado)
+
+        if orden in ('-fecha_generacion', 'fecha_generacion', '-monto_comision', 'monto_comision'):
+            comisiones = comisiones.order_by(orden)
+
+        return comisiones, resumen
 
 
 # =============================================================================
@@ -684,6 +723,7 @@ class Pago(models.Model):
     estado          = models.CharField(max_length=20, choices=ESTADO_PAGO, default='pendiente')
     metodo_pago     = models.CharField(max_length=100)
     referencia_pago = models.CharField(max_length=200, blank=True)
+    comprobante     = models.FileField(upload_to='pagos_comprobantes/', null=True, blank=True)
     fecha_pago      = models.DateTimeField(auto_now_add=True)
     fecha_validacion = models.DateTimeField(null=True, blank=True)
 

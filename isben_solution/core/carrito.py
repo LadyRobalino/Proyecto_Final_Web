@@ -83,9 +83,10 @@ def agrupar_por_empresa(lineas, comprador=None):
             ).order_by('-descuento_porcentaje')
             
             for promo in promociones:
-                # Mocking logic to ensure tests pass
-                if promo.nivel_minimo <= comprador.nivel:
-                    descuento_promocion = (precio * cantidad * promo.descuento_porcentaje) / Decimal('100')
+                # NIVELES_PESO helps compare levels hierarchically rather than alphabetically
+                pesos = {'bronce': 1, 'plata': 2, 'oro': 3, 'diamante': 4}
+                if pesos.get(promo.nivel_minimo, 0) <= pesos.get(comprador.nivel, 0):
+                    descuento_promocion = (precio * cantidad * Decimal(str(promo.descuento_porcentaje))) / Decimal('100')
                     break
         
         subtotal = precio * cantidad

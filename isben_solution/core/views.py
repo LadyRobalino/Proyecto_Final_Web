@@ -1087,35 +1087,39 @@ def crear_pedido(request):
             elif request.user.rol != 'comprador' and not comprador_id:
                 messages.error(request, "Selecciona el comprador del pedido.")
             else:
-                primer_producto = detalles_validos[0]['producto']
-                vendedor = request.user.vendedor if request.user.rol == 'vendedor' else None
-
-                capacitacion_pendiente = False
-                if vendedor:
-                    empresa_pedido = primer_producto.empresa
-                    requiere_capacitacion = Curso.objects.filter(
-                        empresa=empresa_pedido, vendedores=vendedor
-                    ).exists()
-                    if requiere_capacitacion and not Evaluacion.objects.filter(
-                        vendedor=vendedor, curso__empresa=empresa_pedido, aprobado=True
-                    ).exists():
-                        capacitacion_pendiente = True
-                        messages.error(
-                            request,
-                            "Debes aprobar la capacitación de esta empresa antes de vender sus productos."
+                empresas_productos = {d['producto'].empresa for d in detalles_validos}
+                if len(empresas_productos) > 1:
+                    messages.error(request, "Todos los productos del pedido deben ser de la misma empresa. Usa el carrito para compras múltiples.")
+                else:
+                    primer_producto = detalles_validos[0]['producto']
+                    vendedor = request.user.vendedor if request.user.rol == 'vendedor' else None
+    
+                    capacitacion_pendiente = False
+                    if vendedor:
+                        empresa_pedido = primer_producto.empresa
+                        requiere_capacitacion = Curso.objects.filter(
+                            empresa=empresa_pedido, vendedores=vendedor
+                        ).exists()
+                        if requiere_capacitacion and not Evaluacion.objects.filter(
+                            vendedor=vendedor, curso__empresa=empresa_pedido, aprobado=True
+                        ).exists():
+                            capacitacion_pendiente = True
+                            messages.error(
+                                request,
+                                "Debes aprobar la capacitación de esta empresa antes de vender sus productos."
+                            )
+    
+                    if not capacitacion_pendiente:
+                        if request.user.rol == 'comprador':
+                            comprador = request.user.comprador
+                        else:
+                            comprador = get_object_or_404(Comprador, pk=comprador_id)
+    
+                        nuevo_pedido = _crear_pedido_desde_detalles(
+                            comprador, primer_producto.empresa, vendedor, detalles_validos,
                         )
-
-                if not capacitacion_pendiente:
-                    if request.user.rol == 'comprador':
-                        comprador = request.user.comprador
-                    else:
-                        comprador = get_object_or_404(Comprador, pk=comprador_id)
-
-                    nuevo_pedido = _crear_pedido_desde_detalles(
-                        comprador, primer_producto.empresa, vendedor, detalles_validos,
-                    )
-                    messages.success(request, f"Pedido {nuevo_pedido.numero_pedido} creado correctamente.")
-                    return redirect('detalle_pedido', pk=nuevo_pedido.pk)
+                        messages.success(request, f"Pedido {nuevo_pedido.numero_pedido} creado correctamente.")
+                        return redirect('detalle_pedido', pk=nuevo_pedido.pk)
 
     precios_productos = {p.id: str(p.precio_venta) for p in Producto.objects.filter(activo=True)}
     return render_con_contexto(request, 'core/pedidos/crear.html', {
@@ -1147,6 +1151,13 @@ def detalle_pedido(request, pk):
         .prefetch_related('detalles__producto', 'pagos', 'comisiones'),
         pk=pk,
     )
+    
+    if request.user.rol == 'empresa' and pedido.empresa != request.user.empresa:
+        raise PermissionDenied("No tienes permiso para ver este pedido.")
+    if request.user.rol == 'vendedor' and pedido.vendedor != request.user.vendedor:
+        raise PermissionDenied("No tienes permiso para ver este pedido.")
+    if request.user.rol == 'comprador' and pedido.comprador != request.user.comprador:
+        raise PermissionDenied("No tienes permiso para ver este pedido.")
     factura = Factura.objects.filter(pedido=pedido).first()
 
     calificacion_empresa = calificacion_vendedor = None
@@ -1315,8 +1326,12 @@ def agregar_al_carrito(request, pk_producto):
     if not producto.tiene_stock():
         messages.error(request, f"{producto.nombre} no tiene stock disponible.")
     else:
-        carrito.agregar(request, producto.pk, cantidad)
-        messages.success(request, f"{producto.nombre} agregado al carrito.")
+        stock_actual = producto.inventario.stock_actual if hasattr(producto, 'inventario') else 0
+        if cantidad > stock_actual:
+            messages.error(request, f"No puedes agregar {cantidad} unidades. Solo hay {stock_actual} disponibles de {producto.nombre}.")
+        else:
+            carrito.agregar(request, producto.pk, cantidad)
+            messages.success(request, f"{producto.nombre} agregado al carrito.")
     return redirect(request.META.get('HTTP_REFERER') or 'lista_productos')
 
 
@@ -1334,6 +1349,14 @@ def actualizar_carrito(request, pk_producto):
             cantidad = int(request.POST.get('cantidad', 0))
         except ValueError:
             cantidad = 0
+            
+        producto = get_object_or_404(Producto, pk=pk_producto)
+        stock_actual = producto.inventario.stock_actual if hasattr(producto, 'inventario') else 0
+        
+        if cantidad > stock_actual:
+            messages.error(request, f"No puedes solicitar {cantidad} unidades. Solo hay {stock_actual} de {producto.nombre}.")
+            cantidad = stock_actual
+            
         carrito.actualizar(request, pk_producto, cantidad)
     return redirect('ver_carrito')
 
@@ -1406,10 +1429,6 @@ def checkout_carrito(request):
                         })
                     pedido = _crear_pedido_desde_detalles(
                         comprador, grupo['empresa'], None, detalles, direccion_entrega=direccion_texto,
-                    )
-                    Pago.objects.create(
-                        pedido=pedido, monto=pedido.total, tipo='total',
-                        metodo_pago=dict(METODOS_PAGO)[metodo_pago], estado='pendiente',
                     )
                     pedidos_creados.append(pedido)
 
@@ -1552,37 +1571,83 @@ def lista_pagos(request):
     return render_con_contexto(request, 'core/pagos/lista.html', {'pagos': _paginar(request, pagos)})
 
 
-@rol_requerido('comprador')
+@rol_requerido('comprador', 'vendedor', 'empresa')
 def crear_pago(request):
-    form = PagoForm(request.POST or None)
+    import json
+    form = PagoForm(request.POST or None, request.FILES or None)
+    saldos_pedidos = {}
+    
+    pedidos_aceptados = Pedido.objects.filter(
+        estado='aceptado'
+    ).exclude(pagos__estado__in=['pendiente', 'validado'])
+
     if request.user.rol == 'comprador':
-        form.fields['pedido'].queryset = Pedido.objects.filter(
-            comprador=request.user.comprador, estado__in=['pendiente', 'aceptado']
-        )
+        pedidos_aceptados = pedidos_aceptados.filter(comprador=request.user.comprador)
+    elif request.user.rol == 'vendedor':
+        pedidos_aceptados = pedidos_aceptados.filter(vendedor=request.user.vendedor)
+    elif request.user.rol == 'empresa':
+        pedidos_aceptados = pedidos_aceptados.filter(empresa=request.user.empresa)
+
+    form.fields['pedido'].queryset = pedidos_aceptados
+    for ped in pedidos_aceptados:
+        saldos_pedidos[str(ped.pk)] = str(ped.total)
+            
+    saldos_json = json.dumps(saldos_pedidos)
     if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, "Pago registrado. Quedará confirmado tras su validación.")
-        return redirect('lista_pagos')
-    return render_con_contexto(request, 'core/pagos/crear.html', {'form': form})
+        pago = form.save(commit=False)
+        pago.tipo = 'total'  
+        
+        pagos_existentes = Pago.objects.filter(pedido=pago.pedido, estado__in=['pendiente', 'validado'])
+        if pagos_existentes.exists():
+            messages.error(request, "Este pedido ya tiene un pago registrado.")
+        elif pago.monto != pago.pedido.total:
+            messages.error(request, f"El monto debe ser exactamente el total del pedido (${pago.pedido.total}).")
+        else:
+            pago.save()
+            messages.success(request, "Pago registrado. Quedará confirmado tras su validación.")
+            return redirect('lista_pagos')
+            
+    return render_con_contexto(request, 'core/pagos/crear.html', {'form': form, 'saldos_json': saldos_json})
 
 
-@rol_requerido('comprador', 'empresa')
+@rol_requerido('comprador', 'empresa', 'vendedor')
 def detalle_pago(request, pk):
     pago = get_object_or_404(Pago, pk=pk)
+    
+    if request.user.rol == 'empresa' and pago.pedido.empresa != request.user.empresa:
+        raise PermissionDenied("No tienes permiso para ver este pago.")
+    if request.user.rol == 'comprador' and pago.pedido.comprador != request.user.comprador:
+        raise PermissionDenied("No tienes permiso para ver este pago.")
+    if request.user.rol == 'vendedor' and pago.pedido.vendedor != request.user.vendedor:
+        raise PermissionDenied("No tienes permiso para ver este pago.")
+        
     return render_con_contexto(request, 'core/pagos/detalle.html', {'pago': pago})
 
 
 @rol_requerido('empresa')
 def validar_pago(request, pk):
-    """Valida el pago y automatiza la generación de factura y comisión (HU-13, HU-16, HU-17)."""
+    """Valida el pago y automatiza la generación de factura y comisión."""
     pago = get_object_or_404(Pago, pk=pk)
+    
+    if pago.pedido.empresa != request.user.empresa:
+        raise PermissionDenied("No tienes permiso para gestionar este pago.")
+        
+    pedido = pago.pedido
+    
+    # Validar stock antes de aceptar el pedido y el pago
+    if pedido.estado == 'pendiente':
+        faltantes = _aceptar_pedido(pedido)
+        if faltantes:
+            messages.error(
+                request,
+                "No hay stock suficiente para: " + ", ".join(faltantes) +
+                ". Por lo tanto, no se puede validar este pago en este momento."
+            )
+            return redirect('detalle_pedido', pk=pedido.pk)
+
     pago.estado = 'validado'
     pago.fecha_validacion = timezone.now()
     pago.save()
-
-    pedido = pago.pedido
-    if pedido.estado == 'pendiente':
-        _aceptar_pedido(pedido)
 
     if not Factura.objects.filter(pedido=pedido).exists():
         factura = Factura(
@@ -1608,6 +1673,10 @@ def validar_pago(request, pk):
 def rechazar_pago(request, pk):
     """Rechaza el pago y notifica al comprador."""
     pago = get_object_or_404(Pago, pk=pk)
+    
+    if pago.pedido.empresa != request.user.empresa:
+        raise PermissionDenied("No tienes permiso para gestionar este pago.")
+        
     if request.method == 'POST':
         pago.estado = 'rechazado'
         pago.fecha_validacion = timezone.now()
@@ -1785,14 +1854,15 @@ def suscribir_empresa(request, pk_plan):
 
 @rol_requerido('empresa', 'vendedor')
 def cancelar_suscripcion_empresa(request, pk_suscripcion):
-    if request.user.rol == 'empresa':
-        suscripcion = get_object_or_404(Suscripcion, pk=pk_suscripcion, empresa=request.user.empresa)
-    else:
-        suscripcion = get_object_or_404(Suscripcion, pk=pk_suscripcion, vendedor=request.user.vendedor)
+    from django.shortcuts import get_object_or_404
+    try:
+        suscripcion = Suscripcion.obtener_para_cancelar(request.user, pk_suscripcion)
+    except Suscripcion.DoesNotExist:
+        from django.http import Http404
+        raise Http404("Suscripción no encontrada.")
+
     if request.method == 'POST':
-        suscripcion.estado = 'cancelada'
-        suscripcion.fecha_fin = timezone.now().date()
-        suscripcion.save()
+        suscripcion.cancelar()
         messages.success(request, "Suscripción cancelada correctamente.")
     return redirect('lista_suscripciones')
 
@@ -1803,27 +1873,14 @@ def cancelar_suscripcion_empresa(request, pk_suscripcion):
 
 @rol_requerido('empresa', 'vendedor')
 def lista_comisiones(request):
-    comisiones = Comision.objects.select_related(
-        'vendedor__usuario', 'pedido__empresa'
-    ).order_by('-fecha_generacion')
-    if request.user.rol == 'vendedor':
-        comisiones = comisiones.filter(vendedor=request.user.vendedor)
-    elif request.user.rol == 'empresa':
-        comisiones = comisiones.filter(pedido__empresa=request.user.empresa)
-
-    resumen = comisiones.aggregate(
-        pendiente=Sum('monto_comision', filter=Q(estado='pendiente')),
-        pagada=Sum('monto_comision', filter=Q(estado='pagada')),
-        anuladas=Count('id', filter=Q(estado='anulada')),
-    )
-
     estado = request.GET.get('estado', '').strip()
-    if estado:
-        comisiones = comisiones.filter(estado=estado)
-
     orden = request.GET.get('orden', '-fecha_generacion')
-    if orden in ('-fecha_generacion', 'fecha_generacion', '-monto_comision', 'monto_comision'):
-        comisiones = comisiones.order_by(orden)
+
+    comisiones, resumen = Comision.obtener_comisiones_y_resumen(
+        usuario=request.user,
+        estado=estado,
+        orden=orden
+    )
 
     return render_con_contexto(request, 'core/comisiones/lista.html', {
         'comisiones': _paginar(request, comisiones),
